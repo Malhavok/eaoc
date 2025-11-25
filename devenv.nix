@@ -23,8 +23,7 @@
 
   # https://devenv.sh/basics/
   enterShell = ''
-    hello         # Run scripts directly
-    git --version # Use packages
+    unset DEVELOPER_DIR
   '';
 
   # https://devenv.sh/tasks/
