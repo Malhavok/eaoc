@@ -18,10 +18,8 @@ defmodule AoC.Config do
   end
 
   defp load_from_binary(binary) do
-    IO.puts(inspect(binary))
     {:ok, decoded} = Jason.decode(binary, keys: :atoms)
-    IO.puts(inspect(decoded))
-    struct(AoC.Config, decoded)
+    struct(__MODULE__, decoded)
   end
 
   defp prepare_new() do
@@ -32,6 +30,6 @@ defmodule AoC.Config do
 
   defp init_new() do
     current_year = Date.utc_today().year
-    {:ok, %AoC.Config{day: 1, year: current_year}}
+    {:ok, %__MODULE__{day: 1, year: current_year}}
   end
 end
