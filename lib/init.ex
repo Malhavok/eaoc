@@ -28,6 +28,7 @@ defmodule Init do
     with {:ok, _} = year(year),
          {:ok, :created} = create_day(day, year) do
       :ok = template_day(day, year)
+      {:ok, :created}
     end
   end
 
@@ -47,11 +48,11 @@ defmodule Init do
     :ok = Paths.input1_file(day, year) |> File.touch()
     :ok = Paths.input2_file(day, year) |> File.touch()
     :ok = Paths.main_file(day, year) |> File.write("defmodule Main do
-  def part1(inputData) do
+  def part1(_input_data) do
     {:error, :notimplemented}
   end
 
-  def part2(inputData) do
+  def part2(_input_data) do
     {:error, :notimplemented}
   end
 end")
