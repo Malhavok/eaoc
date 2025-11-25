@@ -19,13 +19,13 @@ defmodule AoC.Config do
 
   defp load_from_binary(binary) do
     {:ok, decoded} = Jason.decode(binary, keys: :atoms)
-    struct(__MODULE__, decoded)
+    {:ok, struct(__MODULE__, decoded)}
   end
 
   defp prepare_new() do
     {:ok, new_instance} = init_new()
     :ok = save(new_instance)
-    new_instance
+    {:ok, new_instance}
   end
 
   defp init_new() do
