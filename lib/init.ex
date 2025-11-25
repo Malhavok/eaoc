@@ -25,8 +25,8 @@ defmodule Init do
   """
   def day(day, year) when is_integer(day) and day > 0 and day < 26 do
     # If already exists,
-    with {:ok, _} = year(year),
-         {:ok, :created} = create_day(day, year) do
+    with {:ok, _} <- year(year),
+         {:ok, :created} <- create_day(day, year) do
       :ok = template_day(day, year)
       {:ok, :created}
     end
