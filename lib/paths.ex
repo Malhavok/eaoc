@@ -19,6 +19,10 @@ defmodule Paths do
     file("main.ex", day, year)
   end
 
+  def config_file(day, year) do
+    file(".config.json", day, year)
+  end
+
   defp file(name, day, year) do
     day(day, year) <> ~s"/#{name}"
   end

@@ -56,5 +56,6 @@ defmodule Init do
     {:error, :notimplemented}
   end
 end")
+    Day.Config.save(%Day.Config{}, day, year)
   end
 end
