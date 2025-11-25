@@ -34,3 +34,4 @@ devenv.local.yaml
 .pre-commit-config.yaml
 
 .zed
+.config.json
