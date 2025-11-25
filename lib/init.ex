@@ -12,7 +12,7 @@ defmodule Init do
   {:error, reason}
   """
   def year(year) when is_integer(year) and year > 1980 do
-    mkdir("#{year}")
+    Paths.year(year) |> mkdir()
   end
 
   @doc """
@@ -40,18 +40,18 @@ defmodule Init do
   end
 
   defp create_day(day, year) do
-    mkdir("#{year}/#{day}")
+    Paths.day(day, year) |> mkdir()
   end
 
   defp template_day(day, year) do
-    :ok = File.touch("#{year}/#{day}/input1.txt")
-    :ok = File.touch("#{year}/#{day}/input2.txt")
-    :ok = File.write("#{year}/#{day}/main.ex", "defmodule Main do
-  def part1(inputFile) do
+    :ok = Paths.input1_file(day, year) |> File.touch()
+    :ok = Paths.input2_file(day, year) |> File.touch()
+    :ok = Paths.main_file(day, year) |> File.write("defmodule Main do
+  def part1(inputData) do
     {:error, :notimplemented}
   end
 
-  def part2(inputFile) do
+  def part2(inputData) do
     {:error, :notimplemented}
   end
 end")
