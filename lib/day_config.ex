@@ -12,11 +12,18 @@ defmodule Day.Config do
   @derive Jason.Encoder
   defstruct status: :part1, events: []
 
+  @type t :: %__MODULE__{
+          status: :part1 | :part2 | :done,
+          events: [%Event.Run{} | %Event.Mark{}]
+        }
+
+  @spec save(t(), non_neg_integer(), non_neg_integer()) :: :ok
   def save(config, day, year) do
     binary = config |> Jason.encode!()
     Paths.config_file(day, year) |> File.write(binary)
   end
 
+  @spec load(non_neg_integer(), non_neg_integer()) :: {:ok, t()}
   def load(day, year) do
     {:ok, binary} = Paths.config_file(day, year) |> File.read()
     {:ok, decoded} = Jason.decode(binary, keys: :atoms)
