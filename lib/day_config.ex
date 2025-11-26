@@ -29,9 +29,11 @@ defmodule Day.Config do
 
     case config.status do
       :part1 ->
+        IO.puts("Congrats! Second part is ahead!")
         mark_part1_done(config)
 
       :part2 ->
+        IO.puts("Congrats! Go for the next task!")
         mark_part2_done(config)
 
       _ ->

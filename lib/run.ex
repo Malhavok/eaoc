@@ -1,10 +1,15 @@
 defmodule Run do
-  def part1(day, year) do
-    run(day, year, :part1, :input1_file)
+  @mapping %{
+    :run => :input_file,
+    :test => :test_file
+  }
+
+  def part1(day, year, input_source) when input_source in [:run, :test] do
+    run(day, year, :part1, @mapping[input_source])
   end
 
-  def part2(day, year) do
-    run(day, year, :part2, :input2_file)
+  def part2(day, year, input_source) when input_source in [:run, :test] do
+    run(day, year, :part2, @mapping[input_source])
   end
 
   defp run(day, year, main_fun, input_path_fun) do

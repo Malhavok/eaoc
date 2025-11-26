@@ -15,12 +15,23 @@ defmodule CommandLine do
 
   def handle(["run"]) do
     {:ok, config} = AoC.Config.load()
-    handle_run(config.day, config.year)
+    handle_run(config.day, config.year, :run)
   end
 
   def handle(["run", day_str, year_str]) do
     with {day, ""} <- Integer.parse(day_str), {year, ""} <- Integer.parse(year_str) do
-      handle_run(day, year)
+      handle_run(day, year, :run)
+    end
+  end
+
+  def handle(["test"]) do
+    {:ok, config} = AoC.Config.load()
+    handle_run(config.day, config.year, :test)
+  end
+
+  def handle(["test", day_str, year_str]) do
+    with {day, ""} <- Integer.parse(day_str), {year, ""} <- Integer.parse(year_str) do
+      handle_run(day, year, :test)
     end
   end
 
@@ -68,17 +79,17 @@ defmodule CommandLine do
     :ok
   end
 
-  defp handle_run(day, year) do
-    perform_run(day, year)
+  defp handle_run(day, year, input_source) when input_source in [:run, :test] do
+    perform_run(day, year, input_source)
     AoC.Config.save(%AoC.Config{day: day, year: year})
     :ok
   end
 
-  defp perform_run(day, year) do
+  defp perform_run(day, year, input_source) do
     {:ok, %Day.Config{}} = {:ok, day_config} = Day.Config.load(day, year)
 
     start_time = System.monotonic_time()
-    run_result = perform_run(day, year, day_config.status)
+    run_result = perform_run(day, year, input_source, day_config.status)
     end_time = System.monotonic_time()
 
     duration = System.convert_time_unit(end_time - start_time, :native, :millisecond)
@@ -88,16 +99,18 @@ defmodule CommandLine do
       | events: [Event.Run.new(duration, Tuple.to_list(run_result)) | day_config.events]
     }
     |> Day.Config.save(day, year)
+
+    run_result |> inspect() |> IO.puts()
   end
 
-  defp perform_run(day, year, :done) do
+  defp perform_run(day, year, input_source, :done) do
     IO.puts("Rerunning part2 for day #{day}/#{year}")
-    perform_run(day, year, :part2)
+    perform_run(day, year, input_source, :part2)
   end
 
-  defp perform_run(day, year, part_id) do
+  defp perform_run(day, year, input_source, part_id) do
     try do
-      apply(Run, part_id, [day, year])
+      apply(Run, part_id, [day, year, input_source])
     rescue
       exception -> {:exception, inspect(exception)}
     end

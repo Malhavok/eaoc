@@ -7,12 +7,12 @@ defmodule Paths do
     year(year) <> ~s"/#{day}"
   end
 
-  def input1_file(day, year) do
-    file("input1.txt", day, year)
+  def input_file(day, year) do
+    file("input.txt", day, year)
   end
 
-  def input2_file(day, year) do
-    file("input2.txt", day, year)
+  def test_file(day, year) do
+    file("test.txt", day, year)
   end
 
   def main_file(day, year) do

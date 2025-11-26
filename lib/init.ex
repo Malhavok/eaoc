@@ -45,8 +45,8 @@ defmodule Init do
   end
 
   defp template_day(day, year) do
-    :ok = Paths.input1_file(day, year) |> File.touch()
-    :ok = Paths.input2_file(day, year) |> File.touch()
+    :ok = Paths.input_file(day, year) |> File.touch()
+    :ok = Paths.test_file(day, year) |> File.touch()
     :ok = Paths.main_file(day, year) |> File.write("defmodule Main do
   def part1(_input_data) do
     {:error, :notimplemented}
