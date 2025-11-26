@@ -1,2 +1,2 @@
 #!/usr/bin/env zsh
-mix run -e 'System.argv() |> CommandLine.handle()' -- $@
+mix run -e 'apply(CommandLine, :handle, System.argv())' -- $@
