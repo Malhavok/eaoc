@@ -24,7 +24,23 @@ defmodule Day.Config do
     {:ok, struct(__MODULE__, converted)}
   end
 
-  def mark_part1_done(config_raw) do
+  def progress_done(config_raw) do
+    %__MODULE__{} = config = config_raw
+
+    case config.status do
+      :part1 ->
+        mark_part1_done(config)
+
+      :part2 ->
+        mark_part2_done(config)
+
+      _ ->
+        IO.puts("Task already solved.")
+        {:ok, config}
+    end
+  end
+
+  defp mark_part1_done(config_raw) do
     %__MODULE__{} = config = config_raw
 
     {:ok,
@@ -34,7 +50,7 @@ defmodule Day.Config do
      }}
   end
 
-  def mark_part2_done(config_raw) do
+  defp mark_part2_done(config_raw) do
     %__MODULE__{} = config = config_raw
 
     {:ok,
