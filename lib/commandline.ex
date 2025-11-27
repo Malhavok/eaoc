@@ -1,20 +1,32 @@
-defmodule CommandLineHelper do
-  defmacro make_handle(command, call) do
-    quote do
-      def handle(unquote(command), day_str, year_str) do
-        {:ok, config} = AoC.Config.load()
-        day = if day_str, do: String.to_integer(day_str), else: config.day
-        year = if year_str, do: String.to_integer(year_str), else: config.year
-        unquote(call).(day, year)
-      end
-    end
-  end
-end
-
 defmodule CommandLine do
-  require CommandLineHelper
-
   def handle(command, day_str \\ nil, year_str \\ nil)
+
+  def handle("init", day_str, year_str) do
+    handle_raw(&handle_init/2, day_str, year_str)
+  end
+
+  def handle("run", day_str, year_str) do
+    handle_raw(fn day, year -> handle_run(day, year, :run) end, day_str, year_str)
+  end
+
+  def handle("test", day_str, year_str) do
+    handle_raw(fn day, year -> handle_run(day, year, :test) end, day_str, year_str)
+  end
+
+  def handle("log", day_str, year_str) do
+    handle_raw(&handle_log/2, day_str, year_str)
+  end
+
+  def handle("done", day_str, year_str) do
+    handle_raw(&handle_done/2, day_str, year_str)
+  end
+
+  def handle_raw(handler_fun, day_str, year_str) do
+    {:ok, config} = AoC.Config.load()
+    day = if day_str, do: String.to_integer(day_str), else: config.day
+    year = if year_str, do: String.to_integer(year_str), else: config.year
+    handler_fun.(day, year)
+  end
 
   defp handle_init(day, year) do
     {:ok, _} = Init.day(day, year)
@@ -75,10 +87,4 @@ defmodule CommandLine do
     :ok = Day.Config.save(new_config, day, year)
     AoC.Config.save(%AoC.Config{day: day, year: year})
   end
-
-  CommandLineHelper.make_handle("init", &handle_init/2)
-  CommandLineHelper.make_handle("run", fn day, year -> handle_run(day, year, :run) end)
-  CommandLineHelper.make_handle("test", fn day, year -> handle_run(day, year, :test) end)
-  CommandLineHelper.make_handle("log", &handle_log/2)
-  CommandLineHelper.make_handle("done", &handle_done/2)
 end
