@@ -88,16 +88,17 @@ defmodule Main do
   end
 
   def apply_generic_operation(state, input1, input2, result_name, function) do
-    with {:ok, value1} <- Map.fetch(state, input1), {:ok, value2} <- Map.fetch(state, input2) do
+    with {:ok, value1} <- Map.fetch(state, input1),
+         {:ok, value2} <- Map.fetch(state, input2) do
       value = function.(value1, value2)
       new_state = Map.put(state, result_name, value)
       {:ok, new_state}
     end
   end
 
-  def build_result(state) do
+  def build_result(state, prefix \\ "z") do
     z_keys =
-      Map.filter(state, fn {key, _value} -> String.starts_with?(key, "z") end)
+      Map.filter(state, fn {key, _value} -> String.starts_with?(key, prefix) end)
       |> Map.keys()
       |> Enum.sort(:desc)
 
