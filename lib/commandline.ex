@@ -1,4 +1,8 @@
 defmodule CommandLine do
+  def main(args) do
+    apply(__MODULE__, :handle, args)
+  end
+
   def handle(command, day_str \\ nil, year_str \\ nil)
 
   def handle("init", day_str, year_str) do
