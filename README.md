@@ -1,21 +1,15 @@
 # Eaoc
 
-**TODO: Add description**
+Elixir Advent of Code project
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `eaoc` to your list of dependencies in `mix.exs`:
+Run:
 
-```elixir
-def deps do
-  [
-    {:eaoc, "~> 0.1.0"}
-  ]
-end
+```shell
+mix deps.get
+mix escript.build
+chmod +x ./aoc
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/eaoc>.
-
+to get the binary.
