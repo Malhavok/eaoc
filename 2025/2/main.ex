@@ -1,13 +1,18 @@
 defmodule Main do
   require Integer
 
-  def find_duplicated_numbers(range_str) do
+  def find_duplicated_numbers(range_str, fun) do
     [range_start_str, range_end_str] = range_str |> String.split("-")
-    find_duplicated_numbers(String.to_integer(range_start_str), String.to_integer(range_end_str))
+
+    find_duplicated_numbers(
+      String.to_integer(range_start_str),
+      String.to_integer(range_end_str),
+      fun
+    )
   end
 
-  def find_duplicated_numbers(range_start, range_end) do
-    {:ok, range_start..range_end |> Enum.filter(fn elem -> is_duplicate?(elem) end)}
+  def find_duplicated_numbers(range_start, range_end, fun) do
+    {:ok, range_start..range_end |> Enum.filter(fn elem -> fun.(elem) end)}
   end
 
   def is_duplicate?(number) do
@@ -24,22 +29,43 @@ defmodule Main do
     div(number, divider) == rem(number, divider)
   end
 
-  def search_for_duplicates([], duplicates) do
+  def search_for_duplicates([], duplicates, _fun) do
     {:ok, duplicates}
   end
 
-  def search_for_duplicates([head | tail], duplicates) do
-    {:ok, new_duplicates} = find_duplicated_numbers(head)
-    search_for_duplicates(tail, new_duplicates ++ duplicates)
+  def search_for_duplicates([head | tail], duplicates, fun) do
+    {:ok, new_duplicates} = find_duplicated_numbers(head, fun)
+    search_for_duplicates(tail, new_duplicates ++ duplicates, fun)
   end
 
   def part1(input_data) do
     ranges = input_data |> String.trim() |> String.split(",")
-    {:ok, duplicates} = search_for_duplicates(ranges, [])
+    {:ok, duplicates} = search_for_duplicates(ranges, [], &is_duplicate?/1)
     {:ok, duplicates |> Enum.sum()}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  def is_invalid?(number) do
+    digits = number |> Integer.digits()
+    digits_count = digits |> length()
+
+    if digits_count == 1 do
+      false
+    else
+      1..div(digits_count, 2)
+      |> Enum.filter(fn entry -> rem(digits_count, entry) == 0 end)
+      |> Enum.map(fn entry -> is_invalid?(digits, entry) end)
+      |> Enum.any?()
+    end
+  end
+
+  def is_invalid?(digits, count) do
+    [first | rest] = digits |> Enum.chunk_every(count)
+    rest |> Enum.all?(fn entry -> entry == first end)
+  end
+
+  def part2(input_data) do
+    ranges = input_data |> String.trim() |> String.split(",")
+    {:ok, duplicates} = search_for_duplicates(ranges, [], &is_invalid?/1)
+    {:ok, duplicates |> Enum.sum()}
   end
 end
