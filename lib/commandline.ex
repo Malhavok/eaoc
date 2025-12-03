@@ -55,7 +55,9 @@ defmodule CommandLine do
 
     %Day.Config{
       day_config
-      | events: [Event.Run.new(duration, Tuple.to_list(run_result)) | day_config.events]
+      | events: [
+          Event.Run.new(duration, input_source, Tuple.to_list(run_result)) | day_config.events
+        ]
     }
     |> Day.Config.save(day, year)
 

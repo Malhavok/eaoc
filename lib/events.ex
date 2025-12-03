@@ -1,17 +1,23 @@
 defmodule Event.Run do
   @derive Jason.Encoder
-  defstruct log_type: "run", timestamp: nil, duration_ms: nil, result: nil
+  defstruct log_type: "run", timestamp: nil, duration_ms: nil, target: :none, result: nil
 
   @type t :: %__MODULE__{
           log_type: String.t(),
           timestamp: DateTime.t(),
           duration_ms: non_neg_integer(),
+          target: :atom,
           result: [any()]
         }
 
-  @spec new(non_neg_integer(), [any()]) :: t()
-  def new(duration, result) do
-    %__MODULE__{timestamp: DateTime.utc_now(), duration_ms: duration, result: result}
+  @spec new(non_neg_integer(), atom(), [any()]) :: t()
+  def new(duration, target, result) do
+    %__MODULE__{
+      timestamp: DateTime.utc_now(),
+      duration_ms: duration,
+      target: target,
+      result: result
+    }
   end
 end
 
