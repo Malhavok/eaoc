@@ -30,7 +30,40 @@ defmodule Main do
     {:ok, length(belonging)}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp sum_ranges([], result) do
+    {:ok, result}
+  end
+
+  defp sum_ranges([{start_value, end_value} | tail], result) do
+    sum_ranges(tail, result + end_value - start_value + 1)
+  end
+
+  defp merge_ranges([], merged, range) do
+    {:ok, [range | merged]}
+  end
+
+  defp merge_ranges([{start_value, end_value} | tail], merged, nil) do
+    merge_ranges(tail, merged, {start_value, end_value})
+  end
+
+  defp merge_ranges([{start_value, end_value} | tail], merged, {range_start, range_end})
+       when range_end < start_value do
+    merge_ranges(tail, [{range_start, range_end} | merged], {start_value, end_value})
+  end
+
+  defp merge_ranges([{_start_value, end_value} | tail], merged, {range_start, range_end}) do
+    merge_ranges(tail, merged, {range_start, max(end_value, range_end)})
+  end
+
+  def part2(input_data) do
+    lines = input_data |> String.split("\n")
+    {:ok, ranges, _ingredients} = parse_input_ranges(lines, [], [])
+
+    # Sort ranges by their start. This way, if the next start is smaller than the previous end – we can merge them.
+    sorted_ranges = ranges |> Enum.sort(fn {s1, _e1}, {s2, _e2} -> s1 <= s2 end)
+    # Merge ranges prepared in this way.
+    {:ok, merged} = merge_ranges(sorted_ranges, [], nil)
+
+    sum_ranges(merged, 0)
   end
 end
