@@ -13,6 +13,22 @@ defmodule Grid do
     get_neighbour(map, point, neighbours, [])
   end
 
+  @spec get_positions(mapSpec(), char()) :: {:ok, [point(), ...]}
+  def get_positions(map, symbol) do
+    get_positions(map, Map.keys(map), symbol, [])
+  end
+
+  defp get_positions(_map, [], _symbol, found) do
+    {:ok, found}
+  end
+
+  defp get_positions(map, [point | tail], symbol, found) do
+    case Map.get(map, point) do
+      ^symbol -> get_positions(map, tail, symbol, [point | found])
+      _ -> get_positions(map, tail, symbol, found)
+    end
+  end
+
   defp get_neighbour(_map, _point, [], result) do
     {:ok, result}
   end
