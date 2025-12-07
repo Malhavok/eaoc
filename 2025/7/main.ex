@@ -1,4 +1,6 @@
 defmodule Main do
+  @cache :cache_table
+
   defp move_beams(_grid, [], _beams_map, new_beam_map, _y_pos, split_count) do
     {:ok, MapSet.to_list(new_beam_map), split_count}
   end
@@ -35,22 +37,34 @@ defmodule Main do
   end
 
   defp travel_with_beam(grid, x_pos, y_pos) do
-    case Map.get(grid, {x_pos, y_pos}, nil) do
-      nil ->
-        1
+    case :ets.lookup(@cache, key = {x_pos, y_pos}) do
+      [{^key, value}] ->
+        value
 
-      ?. ->
-        travel_with_beam(grid, x_pos, y_pos + 1)
+      [] ->
+        case Map.get(grid, key, nil) do
+          nil ->
+            1
 
-      ?^ ->
-        travel_with_beam(grid, x_pos - 1, y_pos + 1) +
-          travel_with_beam(grid, x_pos + 1, y_pos + 1)
+          ?. ->
+            travel_with_beam(grid, x_pos, y_pos + 1)
+
+          ?^ ->
+            result =
+              travel_with_beam(grid, x_pos - 1, y_pos + 1) +
+                travel_with_beam(grid, x_pos + 1, y_pos + 1)
+
+            :ets.insert(@cache, {key, result})
+            result
+        end
     end
   end
 
   def part2(input_data) do
     {:ok, grid} = Grid.init(input_data)
     {:ok, [{x_pos, y_pos}]} = Grid.get_positions(grid, ?S)
+
+    :ets.new(@cache, [:set, :private, :named_table])
     {:ok, travel_with_beam(grid, x_pos, y_pos + 1)}
   end
 end
