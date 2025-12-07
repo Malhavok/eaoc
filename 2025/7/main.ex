@@ -34,7 +34,23 @@ defmodule Main do
     iterate_beams(grid, [x_pos], y_pos + 1, 0)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp travel_with_beam(grid, x_pos, y_pos) do
+    case Map.get(grid, {x_pos, y_pos}, nil) do
+      nil ->
+        1
+
+      ?. ->
+        travel_with_beam(grid, x_pos, y_pos + 1)
+
+      ?^ ->
+        travel_with_beam(grid, x_pos - 1, y_pos + 1) +
+          travel_with_beam(grid, x_pos + 1, y_pos + 1)
+    end
+  end
+
+  def part2(input_data) do
+    {:ok, grid} = Grid.init(input_data)
+    {:ok, [{x_pos, y_pos}]} = Grid.get_positions(grid, ?S)
+    {:ok, travel_with_beam(grid, x_pos, y_pos + 1)}
   end
 end
