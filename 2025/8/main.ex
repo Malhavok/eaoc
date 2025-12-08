@@ -70,7 +70,26 @@ defmodule Main do
     {:ok, get_result(connections)}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp part2_result({x1, _y1, _z1}, {x2, _y2, _z2}) do
+    {:ok, x1 * x2}
+  end
+
+  defp build_connections2([{_distance, point1, point2} | tail], expected_size, connections) do
+    {:ok, point1_map_set, point1_connections} = search_for_connection(point1, connections)
+    {:ok, point2_map_set, point2_connections} = search_for_connection(point2, point1_connections)
+
+    new_map_set =
+      point1_map_set |> MapSet.union(point2_map_set) |> MapSet.put(point1) |> MapSet.put(point2)
+
+    case MapSet.size(new_map_set) == expected_size do
+      true -> part2_result(point1, point2)
+      false -> build_connections2(tail, expected_size, [new_map_set | point2_connections])
+    end
+  end
+
+  def part2(input_data) do
+    data = list_of_points(input_data)
+    {:ok, distances} = calculate_distances(data, [])
+    {:ok, _result} = build_connections2(distances, length(data), [])
   end
 end
