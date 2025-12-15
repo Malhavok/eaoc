@@ -83,7 +83,46 @@ defmodule Main do
     {:ok, final_data}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp is_any_greater?({_, current}, {_, wanted}) do
+    current
+    |> Enum.to_list()
+    |> Enum.zip(wanted |> Enum.to_list())
+    |> Enum.any?(fn {value, expected} -> value > expected end)
+  end
+
+  defp check_joltage({_, joltage}, {_, joltage}, depth, _buttons) do
+    {:ok, depth}
+  end
+
+  defp check_joltage(_current_state, _wanted_state, _depth, []) do
+    {:ok, 999_999}
+  end
+
+  defp check_joltage(current_state, wanted_state, depth, [button | tail] = buttons) do
+    {:ok, applied_state} = apply_button(current_state, button)
+
+    {:ok, applied_value} =
+      if is_any_greater?(applied_state, wanted_state) do
+        {:ok, 999_999}
+      else
+        check_joltage(applied_state, wanted_state, depth + 1, buttons)
+      end
+
+    {:ok, unapplied_value} = check_joltage(current_state, wanted_state, depth, tail)
+
+    {:ok, min(applied_value, unapplied_value)}
+  end
+
+  defp handle_part2({full_state, buttons}) do
+    {:ok, initial_state} = make_initial_state(full_state)
+    {:ok, result} = check_joltage(initial_state, full_state, 0, buttons)
+    {full_state, result} |> inspect() |> IO.puts()
+    result
+  end
+
+  def part2(input_data) do
+    {:ok, result} = parse_input(input_data)
+    final_data = result |> Enum.map(&handle_part2/1) |> Enum.sum()
+    {:ok, final_data}
   end
 end
