@@ -33,18 +33,20 @@ defmodule Main do
     {:ok, result}
   end
 
-  defp apply_button(full_state, []) do
+  defp apply_button(full_state, indices, mod \\ 1)
+
+  defp apply_button(full_state, [], _mod) do
     {:ok, full_state}
   end
 
-  defp apply_button({state, counter}, [index | tail]) do
+  defp apply_button({state, counter}, [index | tail], mod) do
     state_value = Enum.at(state, index)
     new_state = List.replace_at(state, index, !state_value)
 
     counter_value = Enum.at(counter, index)
-    new_counter = List.replace_at(counter, index, counter_value + 1)
+    new_counter = List.replace_at(counter, index, counter_value + mod)
 
-    apply_button({new_state, new_counter}, tail)
+    apply_button({new_state, new_counter}, tail, mod)
   end
 
   defp make_initial_state({state, counter}) do
@@ -83,40 +85,40 @@ defmodule Main do
     {:ok, final_data}
   end
 
-  defp is_any_greater?({_, current}, {_, wanted}) do
-    current
-    |> Enum.to_list()
-    |> Enum.zip(wanted |> Enum.to_list())
-    |> Enum.any?(fn {value, expected} -> value > expected end)
+  defp is_exactly_zero?({_, state}) do
+    state |> Enum.all?(fn value -> value == 0 end)
   end
 
-  defp check_joltage({_, joltage}, {_, joltage}, depth, _buttons) do
-    {:ok, depth}
+  defp is_any_below_zero?({_, state}) do
+    state |> Enum.any?(fn value -> value < 0 end)
   end
 
-  defp check_joltage(_current_state, _wanted_state, _depth, []) do
+  defp check_joltage(_wanted_state, _depth, []) do
     {:ok, 999_999}
   end
 
-  defp check_joltage(current_state, wanted_state, depth, [button | tail] = buttons) do
-    {:ok, applied_state} = apply_button(current_state, button)
+  defp check_joltage(wanted_state, depth, [button | tail] = buttons) do
+    {:ok, remaining_state} = apply_button(wanted_state, button, -1)
 
     {:ok, applied_value} =
-      if is_any_greater?(applied_state, wanted_state) do
+      if is_any_below_zero?(remaining_state) do
         {:ok, 999_999}
       else
-        check_joltage(applied_state, wanted_state, depth + 1, buttons)
+        if is_exactly_zero?(remaining_state) do
+          {:ok, depth + 1}
+        else
+          check_joltage(remaining_state, depth + 1, buttons)
+        end
       end
 
-    {:ok, unapplied_value} = check_joltage(current_state, wanted_state, depth, tail)
+    {:ok, unapplied_value} = check_joltage(wanted_state, depth, tail)
 
     {:ok, min(applied_value, unapplied_value)}
   end
 
   defp handle_part2({full_state, buttons}) do
-    {:ok, initial_state} = make_initial_state(full_state)
-    {:ok, result} = check_joltage(initial_state, full_state, 0, buttons)
-    {full_state, result} |> inspect() |> IO.puts()
+    {:ok, result} = check_joltage(full_state, 0, buttons)
+    {result, full_state} |> inspect() |> IO.puts()
     result
   end
 
