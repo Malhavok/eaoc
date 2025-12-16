@@ -1,4 +1,6 @@
 defmodule Main do
+  @cache :cache_table
+
   defp parse_lights(lights) do
     len = String.length(lights)
     base_data = String.slice(lights, 1, len - 2)
@@ -93,30 +95,40 @@ defmodule Main do
     state |> Enum.any?(fn value -> value < 0 end)
   end
 
-  defp check_joltage(_wanted_state, _depth, []) do
-    {:ok, 999_999}
-  end
-
-  defp check_joltage(wanted_state, depth, [button | tail] = buttons) do
+  defp perform_application(wanted_state, button, depth, buttons) do
     {:ok, remaining_state} = apply_button(wanted_state, button, -1)
 
-    {:ok, applied_value} =
-      if is_any_below_zero?(remaining_state) do
+    case {is_any_below_zero?(remaining_state), is_exactly_zero?(remaining_state)} do
+      {false, true} ->
+        {:ok, depth + 1}
+
+      {false, false} ->
+        check_joltage(remaining_state, depth + 1, buttons)
+
+      {true, false} ->
         {:ok, 999_999}
-      else
-        if is_exactly_zero?(remaining_state) do
-          {:ok, depth + 1}
-        else
-          check_joltage(remaining_state, depth + 1, buttons)
-        end
-      end
+    end
+  end
 
-    {:ok, unapplied_value} = check_joltage(wanted_state, depth, tail)
+  defp check_joltage({_, cache_key} = wanted_state, depth, buttons) do
+    case :ets.lookup(@cache, cache_key) do
+      [{^cache_key, depth_value}] ->
+        {:ok, depth_value + depth}
 
-    {:ok, min(applied_value, unapplied_value)}
+      [] ->
+        {:ok, result} =
+          buttons
+          |> Enum.map(fn button -> perform_application(wanted_state, button, depth, buttons) end)
+          |> Enum.min()
+
+        :ets.insert(@cache, {cache_key, result - depth})
+        {:ok, result}
+    end
   end
 
   defp handle_part2({full_state, buttons}) do
+    :ets.delete_all_objects(@cache)
+
     {:ok, result} = check_joltage(full_state, 0, buttons)
     {result, full_state} |> inspect() |> IO.puts()
     result
@@ -124,6 +136,9 @@ defmodule Main do
 
   def part2(input_data) do
     {:ok, result} = parse_input(input_data)
+
+    :ets.new(@cache, [:named_table, :set])
+
     final_data = result |> Enum.map(&handle_part2/1) |> Enum.sum()
     {:ok, final_data}
   end
