@@ -1,5 +1,7 @@
 defmodule Main do
-  @cache :cache_table
+  @solver_path "/opt/homebrew/Cellar/glpk/5.0/bin/glpsol"
+  @input_path "./solve.lp"
+  @output_path "./output.txt"
 
   defp parse_lights(lights) do
     len = String.length(lights)
@@ -87,58 +89,85 @@ defmodule Main do
     {:ok, final_data}
   end
 
-  defp is_exactly_zero?({_, state}) do
-    state |> Enum.all?(fn value -> value == 0 end)
+  defp add_button_to_equation(equations_state, [], _button_index) do
+    {:ok, equations_state}
   end
 
-  defp is_any_below_zero?({_, state}) do
-    state |> Enum.any?(fn value -> value < 0 end)
+  defp add_button_to_equation(equations_state, [index | tail], button_index) do
+    {result, indices_list} = equations_state |> Enum.at(index)
+    new_indices_list = [button_index | indices_list]
+    new_state = List.replace_at(equations_state, index, {result, new_indices_list})
+    add_button_to_equation(new_state, tail, button_index)
   end
 
-  defp perform_application(wanted_state, button, depth, buttons) do
-    {:ok, remaining_state} = apply_button(wanted_state, button, -1)
-
-    case {is_any_below_zero?(remaining_state), is_exactly_zero?(remaining_state)} do
-      {false, true} ->
-        {:ok, depth + 1}
-
-      {false, false} ->
-        check_joltage(remaining_state, depth + 1, buttons)
-
-      {true, false} ->
-        {:ok, 999_999}
-    end
+  defp build_equation_from_buttons(equations_state, [], _index) do
+    {:ok, equations_state}
   end
 
-  defp check_joltage({_, cache_key} = wanted_state, depth, buttons) do
-    case :ets.lookup(@cache, cache_key) do
-      [{^cache_key, depth_value}] ->
-        {:ok, depth_value + depth}
-
-      [] ->
-        {:ok, result} =
-          buttons
-          |> Enum.map(fn button -> perform_application(wanted_state, button, depth, buttons) end)
-          |> Enum.min()
-
-        :ets.insert(@cache, {cache_key, result - depth})
-        {:ok, result}
-    end
+  defp build_equation_from_buttons(equations_state, [button | tail], button_index) do
+    {:ok, new_state} = add_button_to_equation(equations_state, button, button_index)
+    build_equation_from_buttons(new_state, tail, button_index + 1)
   end
 
-  defp handle_part2({full_state, buttons}) do
-    :ets.delete_all_objects(@cache)
+  defp build_equations(state, buttons) do
+    equations_state = state |> Enum.map(fn value -> {value, []} end)
+    build_equation_from_buttons(equations_state, buttons, 0)
+  end
 
-    {:ok, result} = check_joltage(full_state, 0, buttons)
-    {result, full_state} |> inspect() |> IO.puts()
+  defp prepare_solver_input_file(equations_list, num_variables) do
+    generals = 0..(num_variables - 1) |> Enum.map(fn elem -> "x#{elem}" end)
+
+    output =
+      [
+        "Minimize",
+        "  obj: #{generals |> Enum.join(" + ")}",
+        "Subject To"
+      ] ++
+        (equations_list
+         |> Enum.with_index()
+         |> Enum.map(fn {{result, eq_indices}, index} ->
+           index_strings =
+             eq_indices |> Enum.reverse() |> Enum.map(fn x -> "x#{x}" end) |> Enum.join(" + ")
+
+           "  index#{index}: #{index_strings} = #{result}"
+         end)) ++
+        [
+          "Bounds"
+        ] ++
+        (generals |> Enum.map(fn entry -> "  #{entry} >= 0" end)) ++
+        [
+          "Generals",
+          "  #{generals |> Enum.join(" ")}",
+          "End"
+        ]
+
+    {:ok, output |> Enum.join("\n")}
+  end
+
+  defp read_result() do
+    {:ok, content} = File.read(@output_path)
+
+    [objectives_line] =
+      content
+      |> String.split("\n")
+      |> Enum.filter(fn line -> String.starts_with?(line, "Objective:") end)
+
+    objectives_line |> String.split() |> Enum.at(3) |> String.to_integer()
+  end
+
+  defp handle_part2({{_, state}, buttons}) do
+    {:ok, equations} = build_equations(state, buttons)
+    {:ok, input_file} = prepare_solver_input_file(equations, length(buttons))
+    :ok = File.write(@input_path, input_file)
+    {_, 0} = System.cmd(@solver_path, ["--lp", @input_path, "-o", @output_path])
+    result = read_result()
+    File.rm(@input_path)
+    File.rm(@output_path)
     result
   end
 
   def part2(input_data) do
     {:ok, result} = parse_input(input_data)
-
-    :ets.new(@cache, [:named_table, :set])
-
     final_data = result |> Enum.map(&handle_part2/1) |> Enum.sum()
     {:ok, final_data}
   end
