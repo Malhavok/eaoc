@@ -64,6 +64,7 @@ defmodule Main do
   end
 
   defp does_cross_any_edge?(
+         # It doesn't matter if that's X or Y, as long as they're opposites.
          {x_index, x_val, {min_y, max_y}} = input,
          [{y_index, y_val, {min_x, max_x}} | tail]
        )
