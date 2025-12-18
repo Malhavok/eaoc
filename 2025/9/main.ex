@@ -59,63 +59,24 @@ defmodule Main do
     end
   end
 
-  defp is_on_edge?(_point, []) do
+  defp does_cross_any_edge?(_, []) do
     false
   end
 
-  defp is_on_edge?(point, [{direction, value, {min_entry, max_entry}} | tail]) do
-    edge_points =
-      case direction do
-        :x -> min_entry..max_entry |> Enum.map(fn entry -> {value, entry} end)
-        :y -> min_entry..max_entry |> Enum.map(fn entry -> {entry, value} end)
-      end
-
-    result = edge_points |> Enum.any?(fn elem -> point == elem end)
-
-    if result do
+  defp does_cross_any_edge?(
+         {x_index, x_val, {min_y, max_y}} = input,
+         [{y_index, y_val, {min_x, max_x}} | tail]
+       )
+       when x_index != y_index do
+    if min_x < x_val && x_val < max_x && min_y < y_val && y_val < max_y do
       true
     else
-      is_on_edge?(point, tail)
+      does_cross_any_edge?(input, tail)
     end
   end
 
-  defp count_up_ray_crosses(_ray_start, [], count) do
-    {:ok, count}
-  end
-
-  defp count_up_ray_crosses({x1, y1} = ray_start, [{:y, y_value, {min_x, max_x}} | tail], count) do
-    # Only the y-const values matter when we're thinking about the up-ray.
-
-    if y_value < y1 and min_x <= x1 and x1 <= max_x do
-      count_up_ray_crosses(ray_start, tail, count + 1)
-    else
-      count_up_ray_crosses(ray_start, tail, count)
-    end
-  end
-
-  defp count_up_ray_crosses(ray_start, [_head | tail], count) do
-    count_up_ray_crosses(ray_start, tail, count)
-  end
-
-  defp is_inside_polygon?(point, edges) do
-    {:ok, counter} = count_up_ray_crosses(point, edges, 0)
-    # If we have odd number of hits, it's inside the polygon.
-    rem(counter, 2) == 1
-  end
-
-  defp is_a_good_point?(point, edges) do
-    is_on_edge?(point, edges) or is_inside_polygon?(point, edges)
-  end
-
-  defp is_inside_edges?({direction, value, {min_entry, max_entry}}, edges) do
-    points =
-      case direction do
-        :x -> min_entry..max_entry |> Enum.map(fn entry -> {value, entry} end)
-        :y -> min_entry..max_entry |> Enum.map(fn entry -> {entry, value} end)
-      end
-
-    points
-    |> Enum.all?(fn point -> is_a_good_point?(point, edges) end)
+  defp does_cross_any_edge?(input, [_ | tail]) do
+    does_cross_any_edge?(input, tail)
   end
 
   defp is_valid_square?({min_x, min_y}, {max_x, max_y}, edges) do
@@ -126,7 +87,7 @@ defmodule Main do
       {:y, max_y, {min_x, max_x}}
     ]
 
-    working_edges |> Enum.all?(fn entry -> is_inside_edges?(entry, edges) end)
+    !(working_edges |> Enum.any?(fn entry -> does_cross_any_edge?(entry, edges) end))
   end
 
   defp largest_square2(_start_point, [], largest_area, _edges) do
@@ -163,8 +124,8 @@ defmodule Main do
 
     # Ensure that there are only basic edges.
     [head | tail] = data
-    {:ok, :valid} = validate_no_non_90deg(tail, head)
-    {:ok, edges} = build_edges(tail, head, [])
+    {:ok, :valid} = validate_no_non_90deg(tail ++ [head], head)
+    {:ok, edges} = build_edges(tail ++ [head], head, [])
 
     largest_square2(data, 0, edges)
   end
