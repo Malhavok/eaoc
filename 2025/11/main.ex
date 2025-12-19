@@ -29,7 +29,34 @@ defmodule Main do
     {:ok, handle1(data, "you")}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp handle2(_operations, "out", []) do
+    1
+  end
+
+  defp handle2(_operations, "out", [_target | _tail]) do
+    0
+  end
+
+  defp handle2(operations, current_node, [target | tail] = targets) do
+    [{^current_node, list_of_outputs}] =
+      operations |> Enum.filter(fn {elem, _} -> elem == current_node end)
+
+    if Enum.find(list_of_outputs, fn elem -> elem == target end) do
+      handle2(operations, target, tail)
+    else
+      results =
+        list_of_outputs
+        |> Enum.map(fn output -> handle2(operations, output, targets) end)
+        |> Enum.sum()
+
+      results
+    end
+  end
+
+  def part2(input_data) do
+    data = parse_input(input_data)
+
+    {:ok,
+     handle2(data, "svr", ["fft", "dac", "out"]) + handle2(data, "svr", ["dac", "fft", "out"])}
   end
 end

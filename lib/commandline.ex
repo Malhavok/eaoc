@@ -73,7 +73,10 @@ defmodule CommandLine do
     try do
       apply(Run, part_id, [day, year, input_source])
     rescue
-      exception -> {:exception, inspect(exception)}
+      exception ->
+        Exception.format_stacktrace() |> IO.puts()
+        exception |> Exception.message() |> IO.puts()
+        {:exception, inspect(exception)}
     end
   end
 
