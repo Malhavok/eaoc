@@ -1,4 +1,6 @@
 defmodule Main do
+  @cache :cache_table
+
   defp parse_input(input_data) do
     input_data
     |> String.split("\n")
@@ -29,7 +31,7 @@ defmodule Main do
     {:ok, handle1(data, "you")}
   end
 
-  defp handle2(_operations, target, target) do
+  defp handle2(_operations, "out", ["out"]) do
     1
   end
 
@@ -37,43 +39,38 @@ defmodule Main do
     0
   end
 
-  defp handle2(operations, current_node, target) do
-    [{^current_node, list_of_outputs}] =
-      operations |> Enum.filter(fn {elem, _} -> elem == current_node end)
+  defp handle2(operations, target, [target | tail]) do
+    handle2(operations, target, tail)
+  end
 
-    list_of_outputs
-    |> Enum.map(fn output -> handle2(operations, output, target) end)
-    |> Enum.sum()
+  defp handle2(operations, current_node, targets) do
+    cache_key = {current_node, targets}
+
+    case :ets.lookup(@cache, cache_key) do
+      [{^cache_key, value}] ->
+        value
+
+      [] ->
+        [{^current_node, list_of_outputs}] =
+          operations |> Enum.filter(fn {elem, _} -> elem == current_node end)
+
+        result =
+          list_of_outputs
+          |> Enum.map(fn output -> handle2(operations, output, targets) end)
+          |> Enum.sum()
+
+        :ets.insert(@cache, {cache_key, result})
+        result
+    end
   end
 
   def part2(input_data) do
     data = parse_input(input_data)
 
-    path1 = [
-      handle2(data, "svr", "dac"),
-      handle2(data, "dac", "fft"),
-      handle2(data, "fft", "out")
-    ]
+    :ets.new(@cache, [:named_table, :set])
 
-    path1_result =
-      if Enum.any?(path1, fn elem -> elem == 0 end) do
-        0
-      else
-        List.last(path1)
-      end
-
-    path2 = [
-      handle2(data, "svr", "fft"),
-      handle2(data, "fft", "dac"),
-      handle2(data, "dac", "out")
-    ]
-
-    path2_result =
-      if Enum.any?(path2, fn elem -> elem == 0 end) do
-        0
-      else
-        List.last(path2)
-      end
+    path1_result = handle2(data, "svr", ["dac", "fft", "out"])
+    path2_result = handle2(data, "svr", ["fft", "dac", "out"])
 
     {:ok, path1_result + path2_result}
   end
