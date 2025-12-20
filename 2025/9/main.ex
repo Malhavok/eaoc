@@ -65,11 +65,20 @@ defmodule Main do
 
   defp does_cross_any_edge?(
          # It doesn't matter if that's X or Y, as long as they're opposites.
-         {x_index, x_val, {min_y, max_y}} = input,
+         {x_index, x_val, {min_y, max_y}, inside_direction} = input,
          [{y_index, y_val, {min_x, max_x}} | tail]
        )
        when x_index != y_index do
-    if min_x < x_val && x_val < max_x && min_y < y_val && y_val < max_y do
+    # Literal cross, no end stopped inside.
+    cross = min_x < x_val && x_val < max_x && min_y < y_val && y_val < max_y
+
+    inside =
+      case inside_direction do
+        :up -> min_y < y_val && y_val < max_y && x_val == min_x
+        :down -> min_y < y_val && y_val < max_y && x_val == max_x
+      end
+
+    if cross or inside do
       true
     else
       does_cross_any_edge?(input, tail)
@@ -82,10 +91,10 @@ defmodule Main do
 
   defp is_valid_square?({min_x, min_y}, {max_x, max_y}, edges) do
     working_edges = [
-      {:x, min_x, {min_y, max_y}},
-      {:x, max_x, {min_y, max_y}},
-      {:y, min_y, {min_x, max_x}},
-      {:y, max_y, {min_x, max_x}}
+      {:x, min_x, {min_y, max_y}, :up},
+      {:x, max_x, {min_y, max_y}, :down},
+      {:y, min_y, {min_x, max_x}, :up},
+      {:y, max_y, {min_x, max_x}, :down}
     ]
 
     !(working_edges |> Enum.any?(fn entry -> does_cross_any_edge?(entry, edges) end))
