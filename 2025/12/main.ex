@@ -1,3 +1,23 @@
+# A really simple `.lp` file:
+#
+# Minimize
+#   obj: x_dummy
+# Subject To
+#   field_1_2_3: e_0_1_2 + e_0_2_3 + e_1_2_3 > 4
+# Bounds
+#   1 <= e_0_1_2 <= 2
+#   x_dummy = 0
+# Generals
+#   e_0_1_2
+# Binaries
+#   e_0_2_3
+#   e_1_2_3
+# End
+#
+# Solver examples:
+# >>> /opt/homebrew/bin/scip -f test.lp -l out.txt
+# >>> /opt/homebrew/Cellar/glpk/5.0/bin/glpsol --lp test.lp -o out.txt
+
 defmodule Main.Polyomino do
   defstruct index: -1, original: %{}, transformed: []
 

@@ -1,7 +1,7 @@
 You need to have GLPK
 
 ```bash
-brew list glpk
+brew install glpk
 brew list glpk
 ```
 
