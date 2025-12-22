@@ -16,7 +16,12 @@ defmodule Run do
 
   @spec run(non_neg_integer(), non_neg_integer(), atom(), atom()) :: {:ok, any()}
   defp run(day, year, main_fun, input_path_fun) do
-    [{Main, _binary}] = Paths.main_file(day, year) |> Code.compile_file()
+    [Main] =
+      Paths.main_file(day, year)
+      |> Code.compile_file()
+      |> Enum.map(fn {module, _binary} -> module end)
+      |> Enum.filter(fn module -> module == Main end)
+
     {:ok, input_data} = apply(Paths, input_path_fun, [day, year]) |> File.read()
 
     try do
