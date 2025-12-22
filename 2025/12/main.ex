@@ -29,9 +29,52 @@ defmodule Main.Polyomino do
     grab_lines(tail, [head | lines])
   end
 
+  defp mirror_transform([], _x_mult, _y_mult, _sizes, result) do
+    result |> Enum.sort()
+  end
+
+  defp mirror_transform([{x_pos, y_pos} | tail], x_mult, y_mult, {x_size, y_size} = sizes, result) do
+    x_mod = div(1 - x_mult, 2)
+    y_mod = div(1 - y_mult, 2)
+    new_x_pos = rem(x_size - x_mod + x_pos * x_mult, x_size)
+    new_y_pos = rem(y_size - y_mod + y_pos * y_mult, y_size)
+    mirror_transform(tail, x_mult, y_mult, sizes, [{new_x_pos, new_y_pos} | result])
+  end
+
+  defp rotate_flip_90([], result) do
+    result |> Enum.sort()
+  end
+
+  defp rotate_flip_90([{x_pos, y_pos} | tail], result) do
+    rotate_flip_90(tail, [{y_pos, x_pos} | result])
+  end
+
+  defp apply_all_mirrors(state, sizes) do
+    {:ok,
+     [
+       state,
+       state |> mirror_transform(-1, 1, sizes, []),
+       state |> mirror_transform(1, -1, sizes, []),
+       state |> mirror_transform(-1, -1, sizes, [])
+     ]}
+  end
+
+  defp build_transforms(initial, sizes) do
+    {:ok, all_from_initial} = initial |> apply_all_mirrors(sizes)
+    {:ok, all_rotated} = initial |> rotate_flip_90([]) |> apply_all_mirrors(sizes)
+    unique_elements = (all_from_initial ++ all_rotated) |> Enum.uniq()
+    {:ok, unique_elements}
+  end
+
   def parse(index, lines) do
     {:ok, board_lines, new_tail} = grab_lines(lines, [])
     {:ok, grid} = Grid.init(board_lines |> Enum.join("\n"))
+
+    x_size =
+      1 + (grid |> Map.to_list() |> Enum.map(fn {{x_pos, _}, _} -> x_pos end) |> Enum.max())
+
+    y_size =
+      1 + (grid |> Map.to_list() |> Enum.map(fn {{_, y_pos}, _} -> y_pos end) |> Enum.max())
 
     first_transform =
       grid
@@ -39,18 +82,17 @@ defmodule Main.Polyomino do
       |> Enum.filter(fn {_key, value} -> value == ?# end)
       |> Enum.map(fn {key, _} -> key end)
       |> Enum.sort()
-      |> MapSet.new()
+
+    {:ok, all_transforms} = build_transforms(first_transform, {x_size, y_size})
 
     {
       :ok,
       %__MODULE__{
         index: index,
         original: grid,
-        x_size:
-          1 + (grid |> Map.to_list() |> Enum.map(fn {{x_pos, _}, _} -> x_pos end) |> Enum.max()),
-        y_size:
-          1 + (grid |> Map.to_list() |> Enum.map(fn {{_, y_pos}, _} -> y_pos end) |> Enum.max()),
-        transformed: [first_transform]
+        x_size: x_size,
+        y_size: y_size,
+        transformed: all_transforms
       },
       new_tail
     }
@@ -86,7 +128,7 @@ defmodule Main.Polyomino do
   end
 
   defp print_transform([head | tail], x_size, y_size) do
-    :ok = print_polyomio(head, x_size, y_size, 0)
+    :ok = print_polyomio(head |> MapSet.new(), x_size, y_size, 0)
     print_transform(tail, x_size, y_size)
   end
 
@@ -137,12 +179,7 @@ defmodule Main do
   end
 
   def part1(input_data) do
-    {:ok, polyominoes, boards} = parse_data(input_data)
-
-    [polyomino | _] = polyominoes
-    polyomino |> inspect() |> IO.puts()
-    Main.Polyomino.print(polyomino)
-
+    {:ok, _polyominoes, _boards} = parse_data(input_data)
     {:ok, :test}
   end
 
