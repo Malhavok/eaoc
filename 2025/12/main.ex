@@ -156,6 +156,7 @@ defmodule Main do
   @solved_line "SCIP Status        : problem is solved"
   @not_ok_line "SCIP Status        : problem is solved [infeasible]"
   @solver_path "/opt/homebrew/bin/scip"
+  @infeasible_timeout_ms 10_000
 
   defp parse_lines([], polyominoes, boards) do
     {:ok, polyominoes |> Enum.reverse(), boards |> Enum.reverse()}
@@ -337,18 +338,38 @@ defmodule Main do
     end
   end
 
+  defp run_solver() do
+    {_, 0} = System.cmd(@solver_path, ["-f", @lp_file, "-l", @txt_file])
+
+    case read_output() do
+      :ok -> 1
+      :error -> 0
+    end
+  end
+
   defp solve([], _polyominoes, counter) do
     {:ok, counter}
   end
 
   defp solve([board | tail], polyominoes, counter) do
     :ok = generate_lp(board, polyominoes)
-    {_, 0} = System.cmd(@solver_path, ["-f", @lp_file, "-l", @txt_file])
+
+    task = Task.async(&run_solver/0)
 
     mod =
-      case read_output() do
-        :ok -> 1
-        :error -> 0
+      case Task.yield(task, @infeasible_timeout_ms) do
+        nil ->
+          Task.shutdown(task, :brutal_kill)
+          {_, 0} = System.cmd("pkill", ["-9", "scip"])
+
+          IO.puts(
+            "SCIP killed after #{@infeasible_timeout_ms} ms timeout. Considering [infeasible]."
+          )
+
+          0
+
+        {:ok, mod} ->
+          mod
       end
 
     File.rm(@lp_file)
@@ -358,6 +379,9 @@ defmodule Main do
   end
 
   def part1(input_data) do
+    File.rm(@lp_file)
+    File.rm(@txt_file)
+
     {:ok, polyominoes, boards} = parse_data(input_data)
     solve(boards, polyominoes, 0)
   end
