@@ -218,6 +218,43 @@ defmodule Main do
     {length, variables_list, cell_mapping}
   end
 
+  defp build_variable_equations([], _index, result) do
+    {:ok, result}
+  end
+
+  defp build_variable_equations([{count, variables, _} | tail], index, result) do
+    sum_variables = variables |> Enum.join(" + ")
+    new_equation = "vars_#{index}: #{sum_variables} = #{count}"
+    build_variable_equations(tail, index + 1, [new_equation | result])
+  end
+
+  defp build_cell_equations(all_polyominoes) do
+    # Input are tuples of 3, but we're only interested in the last entry.
+    variable_mapping = all_polyominoes |> Enum.map(fn {_, _, map} -> map end)
+
+    # So we have a map variable -> list-of-cells, and we want cell -> list-of-variables
+    equations =
+      variable_mapping
+      |> Enum.reduce(%{}, fn mapping, accumulator ->
+        mapping
+        |> Map.keys()
+        |> Enum.reduce(accumulator, fn variable, out_mapping ->
+          Map.get(mapping, variable)
+          |> Enum.reduce(out_mapping, fn cell_id, out_map ->
+            current = Map.get(out_map, cell_id, [])
+            Map.put(out_map, cell_id, [variable | current])
+          end)
+        end)
+      end)
+      |> Map.to_list()
+      |> Enum.map(fn {cell_id, variable_list} ->
+        variable_join = variable_list |> Enum.join(" + ")
+        "#{cell_id}: #{variable_join} <= 1"
+      end)
+
+    {:ok, equations}
+  end
+
   defp generate_lp(board, polyominoes) do
     poly_with_length =
       polyominoes
@@ -232,6 +269,10 @@ defmodule Main do
       |> Enum.map(fn poly_index_len ->
         generate_polyominoes(poly_index_len, board.x_size, board.y_size)
       end)
+
+    {:ok, variables_equations} = build_variable_equations(all_polyominoes, 0, [])
+    {:ok, cell_equations} = build_cell_equations(all_polyominoes)
+    {cell_equations, variables_equations} |> inspect() |> IO.puts()
   end
 
   def part1(input_data) do
