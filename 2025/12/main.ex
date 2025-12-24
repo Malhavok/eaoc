@@ -178,8 +178,66 @@ defmodule Main do
     parse_lines(lines, [], [])
   end
 
+  defp generate_polyomino(poly_pos_list, poly_index, transform_index, x_size, y_size) do
+    Enum.reduce(0..x_size, {[], %{}}, fn x_index, state_pair ->
+      Enum.reduce(0..y_size, state_pair, fn y_index, {variable_names, position_map} ->
+        new_variable = "poly_#{poly_index}_#{transform_index}_#{x_index}_#{y_index}"
+
+        new_position_map =
+          poly_pos_list
+          |> Enum.reduce(position_map, fn {x_pos, y_pos}, mapping ->
+            full_x = x_pos + x_index
+            full_y = y_pos + y_index
+            cell_name = "cell_#{full_x}_#{full_y}"
+            current = Map.get(mapping, new_variable, [])
+            Map.put(mapping, new_variable, [cell_name | current])
+          end)
+
+        {[new_variable | variable_names], new_position_map}
+      end)
+    end)
+  end
+
+  defp generate_polyominoes({{polyomino, poly_index}, length}, board_x_size, board_y_size) do
+    x_size = board_x_size - polyomino.x_size
+    y_size = board_y_size - polyomino.y_size
+
+    {variables_list, cell_mapping} =
+      polyomino.transformed
+      |> Enum.with_index()
+      |> Enum.map(fn {poly_pos_list, transform_index} ->
+        generate_polyomino(poly_pos_list, poly_index, transform_index, x_size, y_size)
+      end)
+      |> Enum.reduce({[], %{}}, fn {variables, mapping}, {out_variables, out_mapping} ->
+        {
+          out_variables ++ variables,
+          Map.merge(out_mapping, mapping)
+        }
+      end)
+
+    {length, variables_list, cell_mapping}
+  end
+
+  defp generate_lp(board, polyominoes) do
+    poly_with_length =
+      polyominoes
+      |> Enum.with_index()
+      |> Enum.zip(board.poly_count)
+      |> Enum.filter(fn {_, count} -> count > 0 end)
+
+    # Here we get a list of:
+    # {<how many instances should be>, <all variables>, <map from variable to all the cells>}
+    all_polyominoes =
+      poly_with_length
+      |> Enum.map(fn poly_index_len ->
+        generate_polyominoes(poly_index_len, board.x_size, board.y_size)
+      end)
+  end
+
   def part1(input_data) do
-    {:ok, _polyominoes, _boards} = parse_data(input_data)
+    {:ok, polyominoes, boards} = parse_data(input_data)
+    [board | _] = boards
+    generate_lp(board, polyominoes)
     {:ok, :test}
   end
 
