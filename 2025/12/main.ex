@@ -151,6 +151,12 @@ defmodule Main.Board do
 end
 
 defmodule Main do
+  @lp_file "input.lp"
+  @txt_file "out.txt"
+  @solved_line "SCIP Status        : problem is solved"
+  @not_ok_line "SCIP Status        : problem is solved [infeasible]"
+  @solver_path "/opt/homebrew/bin/scip"
+
   defp parse_lines([], polyominoes, boards) do
     {:ok, polyominoes |> Enum.reverse(), boards |> Enum.reverse()}
   end
@@ -218,14 +224,14 @@ defmodule Main do
     {length, variables_list, cell_mapping}
   end
 
-  defp build_variable_equations([], _index, result) do
-    {:ok, result}
+  defp build_variable_equations([], _index, result, variables) do
+    {:ok, variables, result}
   end
 
-  defp build_variable_equations([{count, variables, _} | tail], index, result) do
+  defp build_variable_equations([{count, variables, _} | tail], index, result, out_variables) do
     sum_variables = variables |> Enum.join(" + ")
     new_equation = "vars_#{index}: #{sum_variables} = #{count}"
-    build_variable_equations(tail, index + 1, [new_equation | result])
+    build_variable_equations(tail, index + 1, [new_equation | result], out_variables ++ variables)
   end
 
   defp build_cell_equations(all_polyominoes) do
@@ -255,6 +261,30 @@ defmodule Main do
     {:ok, equations}
   end
 
+  defp build_lp(variables, equations) do
+    lines =
+      [
+        "Minimize",
+        "  obj: dummy",
+        "Subject To"
+      ] ++
+        (equations |> Enum.map(fn eq -> "  #{eq}" end)) ++
+        [
+          "Bounds",
+          "  dummy = 0"
+        ] ++
+        (variables |> Enum.map(fn var -> "  0 <= #{var} <= 1" end)) ++
+        [
+          "Binaries"
+        ] ++
+        (variables |> Enum.map(fn var -> "  #{var}" end)) ++
+        [
+          "End"
+        ]
+
+    {:ok, lines |> Enum.join("\n")}
+  end
+
   defp generate_lp(board, polyominoes) do
     poly_with_length =
       polyominoes
@@ -270,16 +300,66 @@ defmodule Main do
         generate_polyominoes(poly_index_len, board.x_size, board.y_size)
       end)
 
-    {:ok, variables_equations} = build_variable_equations(all_polyominoes, 0, [])
+    {:ok, variables, variables_equations} = build_variable_equations(all_polyominoes, 0, [], [])
     {:ok, cell_equations} = build_cell_equations(all_polyominoes)
-    {cell_equations, variables_equations} |> inspect() |> IO.puts()
+
+    {:ok, lp_content} = build_lp(variables, variables_equations ++ cell_equations)
+    File.write(@lp_file, lp_content)
+  end
+
+  defp read_output() do
+    lines =
+      @txt_file
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.filter(fn line ->
+        case line do
+          @not_ok_line <> _ -> true
+          _ -> false
+        end
+      end)
+
+    @txt_file
+    |> File.read!()
+    |> String.split("\n")
+    |> Enum.filter(fn line ->
+      case line do
+        @solved_line <> _ -> true
+        _ -> false
+      end
+    end)
+    |> inspect()
+    |> IO.puts()
+
+    case lines do
+      [] -> :ok
+      _ -> :error
+    end
+  end
+
+  defp solve([], _polyominoes, counter) do
+    {:ok, counter}
+  end
+
+  defp solve([board | tail], polyominoes, counter) do
+    :ok = generate_lp(board, polyominoes)
+    {_, 0} = System.cmd(@solver_path, ["-f", @lp_file, "-l", @txt_file])
+
+    mod =
+      case read_output() do
+        :ok -> 1
+        :error -> 0
+      end
+
+    File.rm(@lp_file)
+    File.rm(@txt_file)
+
+    solve(tail, polyominoes, counter + mod)
   end
 
   def part1(input_data) do
     {:ok, polyominoes, boards} = parse_data(input_data)
-    [board | _] = boards
-    generate_lp(board, polyominoes)
-    {:ok, :test}
+    solve(boards, polyominoes, 0)
   end
 
   def part2(_input_data) do
