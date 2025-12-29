@@ -112,7 +112,51 @@ defmodule Main do
     build_result(end_state)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp assign_depths([], depths_map) do
+    {:ok, depths_map}
+  end
+
+  defp assign_depths([{input1, _op, input2, result} = operation | tail], depths_map) do
+    with {:ok, input1_value} <- Map.fetch(depths_map, input1),
+         {:ok, input2_value} <- Map.fetch(depths_map, input2) do
+      new_value = 1 + max(input1_value, input2_value)
+      new_map = Map.put(depths_map, result, new_value)
+      new_map |> inspect() |> IO.puts()
+      assign_depths(tail, new_map)
+    else
+      :error ->
+        assign_depths(tail ++ [operation], depths_map)
+    end
+  end
+
+  defp append_initial_state(input, output_state) do
+    if String.starts_with?(input, "x") || String.starts_with?(input, "y") do
+      {:ok, Map.put(output_state, input, 0)}
+    else
+      {:ok, output_state}
+    end
+  end
+
+  defp make_initial_state([], output_state) do
+    {:ok, output_state}
+  end
+
+  defp make_initial_state([{input1, _op, input2, _result} | tail], output_state) do
+    {:ok, sub_map} = append_initial_state(input1, output_state)
+    {:ok, new_map} = append_initial_state(input2, sub_map)
+    make_initial_state(tail, new_map)
+  end
+
+  def part2(input_data) do
+    {:ok, _state, operations} = parse_data(String.split(input_data, "\n"))
+    # Ensuring that all inputs have depth of 0.
+    {:ok, initial_state} = make_initial_state(operations, %{})
+    # Assigning depths to all other operations.
+    {:ok, depths_map} = assign_depths(operations, initial_state)
+    # Bucketing depths.
+    # All small values 1/2 will be directly connected to inputs.
+    # Large values are part of the carry chain. It should be continuous.
+
+    {:ok, :test}
   end
 end
