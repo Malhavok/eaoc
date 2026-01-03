@@ -112,50 +112,94 @@ defmodule Main do
     build_result(end_state)
   end
 
-  defp assign_depths([], depths_map) do
-    {:ok, depths_map}
-  end
+  defp list_operations(operations, wanted_nodes, end_at, result) do
+    new_ops =
+      operations
+      |> Enum.filter(fn {input1, _op, input2, _result} ->
+        (MapSet.member?(wanted_nodes, input1) or MapSet.member?(wanted_nodes, input2)) and
+          input1 != end_at and input2 != end_at
+      end)
 
-  defp assign_depths([{input1, _op, input2, result} = operation | tail], depths_map) do
-    with {:ok, input1_value} <- Map.fetch(depths_map, input1),
-         {:ok, input2_value} <- Map.fetch(depths_map, input2) do
-      new_value = 1 + max(input1_value, input2_value)
-      new_map = Map.put(depths_map, result, new_value)
-      new_map |> inspect() |> IO.puts()
-      assign_depths(tail, new_map)
+    if length(new_ops) == 0 do
+      {:ok, result}
     else
-      :error ->
-        assign_depths(tail ++ [operation], depths_map)
+      new_result = (result ++ new_ops) |> Enum.uniq()
+      new_wanted = new_ops |> Enum.map(fn {_, _, _, result} -> result end) |> MapSet.new()
+      list_operations(operations, new_wanted, end_at, new_result)
     end
   end
 
-  defp append_initial_state(input, output_state) do
-    if String.starts_with?(input, "x") || String.starts_with?(input, "y") do
-      {:ok, Map.put(output_state, input, 0)}
+  defp list_operations_starting_from(start_node, operations, end_at) do
+    wanted_nodes = MapSet.new([start_node])
+    list_operations(operations, wanted_nodes, end_at, [])
+  end
+
+  defp find_operation([], _, _) do
+    :error
+  end
+
+  defp find_operation(
+         [{input1, operation_type, input2, _result} = head | tail],
+         input_starts_with,
+         operation_type
+       ) do
+    if String.starts_with?(input1, input_starts_with) or
+         String.starts_with?(input2, input_starts_with) do
+      {:ok, head}
     else
-      {:ok, output_state}
+      find_operation(tail, input_starts_with, operation_type)
     end
   end
 
-  defp make_initial_state([], output_state) do
-    {:ok, output_state}
+  defp find_operation([_head | tail], input_starts_with, operation_type) do
+    find_operation(tail, input_starts_with, operation_type)
   end
 
-  defp make_initial_state([{input1, _op, input2, _result} | tail], output_state) do
-    {:ok, sub_map} = append_initial_state(input1, output_state)
-    {:ok, new_map} = append_initial_state(input2, sub_map)
-    make_initial_state(tail, new_map)
+  defp get_carry_from_ops(operations) do
+    # This goes in two stages:
+    # First we find :xor operation starting with one of the input being "xXX"
+    # We check the output node there
+    # Then we find another :xor operation where one of the inputs is the previous output
+    # (this has been confirmed to work in our case)
+    # We then return the other input to that function.
+    {:ok, {_, :xor, _, xor_output}} = find_operation(operations, "x", :xor)
+    {:ok, {input1, :xor, input2, _}} = find_operation(operations, xor_output, :xor)
+
+    if input1 == xor_output do
+      {:ok, input2}
+    else
+      {:ok, input1}
+    end
   end
 
   def part2(input_data) do
     {:ok, _state, operations} = parse_data(String.split(input_data, "\n"))
-    # Ensuring that all inputs have depth of 0.
-    {:ok, initial_state} = make_initial_state(operations, %{})
-    # Assigning depths to all other operations.
-    {:ok, depths_map} = assign_depths(operations, initial_state)
-    # Bucketing depths.
-    # All small values 1/2 will be directly connected to inputs.
-    # Large values are part of the carry chain. It should be continuous.
+
+    {:ok, result} = list_operations_starting_from("x44", operations, nil)
+    get_carry_from_ops(result) |> inspect() |> IO.puts()
+
+    # Top level (5 operations):
+    # {"y44", :and, "x44", "vdn"}
+    # {"x44", :xor, "y44", "nnt"}
+    # {"nnt", :and, "jnj", "qtn"}  – jnj has to be carry from the level below.
+    # {"nnt", :xor, "jnj", "z44"}
+    # {"vdn", :or, "qtn", "z45"}
+    #
+    # Lower level (always 5 operations):
+    # {"x43", :xor, "y43", "gnj"}
+    # {"y43", :and, "x43", "hsd"}
+    # {"gnj", :and, "dpg", "nsf"} – :and from input  has to go to :and from carry into :or for next carry
+    # {"dpg", :xor, "gnj", "z43"} – :xor from inputs has to go to :xor from previous carry and into current output bit
+    # {"hsd", :or, "nsf", "jnj"} – new carry is :and from inputs :or :xor inputs with :and previous carry
+    #
+    # So:
+    # inputs :xor has to go to some :and and :xor with the same input, being previous carry
+    # :xor :xor –> has to go to the given level output
+    # :xor :and + :and –> goes to this level carry
+    #
+    # After manual analysis:
+    # - carry is always provided as :xor :xor on each level properly, that is none of the input xor outputs are misplaced.
+    # - this allows us to simply partition whole operations into groups of 5 (except for the first one, which is a group of 2).
 
     {:ok, :test}
   end
