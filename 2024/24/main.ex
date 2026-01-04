@@ -160,26 +160,28 @@ defmodule Main do
   end
 
   defp get_carry_from_ops(operations) when length(operations) == 5 do
-    # This goes in two stages:
-    # First we find :xor operation starting with one of the input being "xXX"
-    # We check the output node there
-    # Then we find another :xor operation where one of the inputs is the previous output
-    # (this has been confirmed to work in our case)
-    # We then return the other input to that function.
-    {:ok, {_, :xor, _, xor_output}} = find_operation(operations, "x", :xor)
-    {:ok, {_, :and, _, and_output}} = find_operation(operations, "x", :and)
+    # This is really simple. Since we know that all the inputs are "ok",
+    # we're searching for :and and :xor operations that are not starting
+    # with inputs, and then check the common input between them.
+    {and_input1, :and, and_input2, _} =
+      operations
+      |> Enum.find(fn {input1, op, input2, _} ->
+        !String.starts_with?(input1, "x") and !String.starts_with?(input2, "x") and op == :and
+      end)
 
-    {:ok, {input1, _, input2, _}} =
-      case find_operation(operations, xor_output, :xor) do
-        {:ok, result} -> {:ok, result}
-        :error -> find_operation(operations, and_output, :xor)
-      end
+    {xor_input1, :xor, xor_input2, _} =
+      operations
+      |> Enum.find(fn {input1, op, input2, _} ->
+        !String.starts_with?(input1, "x") and !String.starts_with?(input2, "x") and op == :xor
+      end)
 
-    if input1 == xor_output do
-      {:ok, input2}
-    else
-      {:ok, input1}
-    end
+    carry =
+      MapSet.new([and_input1, and_input2])
+      |> MapSet.intersection(MapSet.new([xor_input1, xor_input2]))
+      |> MapSet.to_list()
+      |> Enum.at(0)
+
+    {:ok, carry}
   end
 
   defp get_carry_from_ops(operations) do
