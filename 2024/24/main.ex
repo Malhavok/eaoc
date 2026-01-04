@@ -184,7 +184,7 @@ defmodule Main do
     {:ok, carry}
   end
 
-  defp get_carry_from_ops(operations) do
+  defp get_carry_from_ops(_operations) do
     {:error, :carry_chain_malformed}
   end
 
@@ -228,15 +228,42 @@ defmodule Main do
     end
   end
 
-  defp is_output_as_input?({_, _, _, output}, {input1, _, input2, _}) do
-    input1 == output or input2 == output
+  defp validate_misplaced_input(
+         misplaced,
+         {_, _, _, output} = operation1,
+         {input1, _, input2, _} = operation2
+       ) do
+    if input1 == output or input2 == output do
+      misplaced
+    else
+      {:misplaced_input, operation1, operation2} |> inspect() |> IO.puts()
+      [output | misplaced]
+    end
+  end
+
+  defp validate_misplaced_prefix(misplaced, {_, _, _, output} = operation, prefix) do
+    if String.starts_with?(output, prefix) do
+      misplaced
+    else
+      {:misplaced_prefix, operation, prefix} |> inspect() |> IO.puts()
+      [output | misplaced]
+    end
+  end
+
+  defp validate_not_output(misplaced, {_, _, _, output} = operation) do
+    if String.starts_with?(output, "z") do
+      {:not_output, operation} |> inspect() |> IO.puts()
+      [output | misplaced]
+    else
+      misplaced
+    end
   end
 
   defp analyse_levels([], misplaced) do
     {:ok, misplaced}
   end
 
-  defp analyse_levels([{operations, next_carry} | tail], misplaced)
+  defp analyse_levels([{operations, _next_carry} | tail], misplaced)
        when length(operations) == 5 do
     # Output of this should be an input to or_op.
     {:ok, input_and_op} = find_operation(operations, "x", :and)
@@ -263,7 +290,20 @@ defmodule Main do
     # Sanity check.
     :ok = confirm_same_inputs(and_op, xor_op)
 
-    analyse_levels(tail, misplaced)
+    new_misplaced =
+      misplaced
+      |> validate_misplaced_input(input_and_op, or_op)
+      |> validate_misplaced_input(input_xor_op, and_op)
+      |> validate_misplaced_input(input_xor_op, xor_op)
+      |> validate_misplaced_input(and_op, or_op)
+      |> validate_misplaced_prefix(xor_op, "z")
+      |> validate_not_output(input_and_op)
+      |> validate_not_output(input_xor_op)
+      |> validate_not_output(and_op)
+      |> validate_not_output(or_op)
+      |> Enum.uniq()
+
+    analyse_levels(tail, new_misplaced)
   end
 
   defp analyse_levels([{operations, _next_carry} | tail], misplaced)
@@ -302,6 +342,13 @@ defmodule Main do
     reverse_sorted_inputs = all_inputs |> Enum.uniq() |> Enum.sort(:desc)
     {:ok, levels} = build_levels(reverse_sorted_inputs, operations, nil, [])
     {:ok, misplaced} = analyse_levels(levels, [])
-    {:ok, misplaced |> Enum.sort() |> Enum.join(",")}
+    # In misplaced we also get last output, it's an error and we should remove it.
+    final_output =
+      "z" <> String.pad_leading(length(reverse_sorted_inputs) |> Integer.to_string(), 2, "0")
+
+    filtered_misplaced =
+      misplaced |> Enum.filter(fn entry -> entry != final_output end)
+
+    {:ok, filtered_misplaced |> Enum.sort() |> Enum.join(",")}
   end
 end
