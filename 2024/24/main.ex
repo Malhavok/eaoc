@@ -155,7 +155,11 @@ defmodule Main do
     find_operation(tail, input_starts_with, operation_type)
   end
 
-  defp get_carry_from_ops(operations) do
+  defp get_carry_from_ops(operations) when length(operations) == 2 do
+    {:ok, nil}
+  end
+
+  defp get_carry_from_ops(operations) when length(operations) == 5 do
     # This goes in two stages:
     # First we find :xor operation starting with one of the input being "xXX"
     # We check the output node there
@@ -163,7 +167,13 @@ defmodule Main do
     # (this has been confirmed to work in our case)
     # We then return the other input to that function.
     {:ok, {_, :xor, _, xor_output}} = find_operation(operations, "x", :xor)
-    {:ok, {input1, :xor, input2, _}} = find_operation(operations, xor_output, :xor)
+    {:ok, {_, :and, _, and_output}} = find_operation(operations, "x", :and)
+
+    {:ok, {input1, _, input2, _}} =
+      case find_operation(operations, xor_output, :xor) do
+        {:ok, result} -> {:ok, result}
+        :error -> find_operation(operations, and_output, :xor)
+      end
 
     if input1 == xor_output do
       {:ok, input2}
@@ -172,11 +182,96 @@ defmodule Main do
     end
   end
 
+  defp get_carry_from_ops(operations) do
+    {:error, :carry_chain_malformed}
+  end
+
+  defp list_x_inputs([], results) do
+    {:ok, results}
+  end
+
+  defp list_x_inputs([{"x" <> _ = input, _, _, _} | tail], results) do
+    list_x_inputs(tail, [input | results])
+  end
+
+  defp list_x_inputs([{_, _, "x" <> _ = input, _} | tail], results) do
+    list_x_inputs(tail, [input | results])
+  end
+
+  defp list_x_inputs([_ | tail], results) do
+    list_x_inputs(tail, results)
+  end
+
+  defp build_levels([], _operations, _previous_carry, result) do
+    {:ok, result}
+  end
+
+  defp build_levels([current_input | tail], operations, previous_carry, result) do
+    {:ok, sub_operations} =
+      list_operations_starting_from(current_input, operations, previous_carry)
+
+    {:ok, new_carry} = get_carry_from_ops(sub_operations)
+
+    build_levels(tail, operations, new_carry, [{sub_operations, previous_carry} | result])
+  end
+
+  defp confirm_same_inputs({input1_1, _, input2_1, _}, {input1_2, _, input2_2, _}) do
+    inputs_1 = [input1_1, input2_1] |> Enum.sort()
+    inputs_2 = [input1_2, input2_2] |> Enum.sort()
+
+    if inputs_1 == inputs_2 do
+      :ok
+    else
+      :error
+    end
+  end
+
+  defp is_output_as_input?({_, _, _, output}, {input1, _, input2, _}) do
+    input1 == output or input2 == output
+  end
+
+  defp analyse_levels([], misplaced) do
+    {:ok, misplaced}
+  end
+
+  defp analyse_levels([{operations, next_carry} | tail], misplaced)
+       when length(operations) == 5 do
+    # Output of this should be an input to or_op.
+    {:ok, input_and_op} = find_operation(operations, "x", :and)
+
+    # Output of this should be an input to xor_op and and_op.
+    {:ok, input_xor_op} = find_operation(operations, "x", :xor)
+
+    # This part is part of carry operation, output of it should be an input to or_op.
+    # Inputs are :xor path and previous carry.
+    and_op =
+      operations
+      |> Enum.find(fn {_, op, _, _} = full_op -> op == :and and full_op != input_and_op end)
+
+    # This path should lead to zXX result.
+    # Inputs are :xor path and previous carry.
+    xor_op =
+      operations
+      |> Enum.find(fn {_, op, _, _} = full_op -> op == :xor and full_op != input_xor_op end)
+
+    # This result should be next_carry.
+    # Inputs are outputs of :xor-:and path and :and path.
+    or_op = operations |> Enum.find(fn {_, op, _, _} -> op == :or end)
+
+    # Sanity check.
+    :ok = confirm_same_inputs(and_op, xor_op)
+
+    analyse_levels(tail, misplaced)
+  end
+
+  defp analyse_levels([{operations, _next_carry} | tail], misplaced)
+       when length(operations) == 2 do
+    # I assume that the first level is OK.
+    analyse_levels(tail, misplaced)
+  end
+
   def part2(input_data) do
     {:ok, _state, operations} = parse_data(String.split(input_data, "\n"))
-
-    {:ok, result} = list_operations_starting_from("x44", operations, nil)
-    get_carry_from_ops(result) |> inspect() |> IO.puts()
 
     # Top level (5 operations):
     # {"y44", :and, "x44", "vdn"}
@@ -201,6 +296,10 @@ defmodule Main do
     # - carry is always provided as :xor :xor on each level properly, that is none of the input xor outputs are misplaced.
     # - this allows us to simply partition whole operations into groups of 5 (except for the first one, which is a group of 2).
 
-    {:ok, :test}
+    {:ok, all_inputs} = list_x_inputs(operations, [])
+    reverse_sorted_inputs = all_inputs |> Enum.uniq() |> Enum.sort(:desc)
+    {:ok, levels} = build_levels(reverse_sorted_inputs, operations, nil, [])
+    {:ok, misplaced} = analyse_levels(levels, [])
+    {:ok, misplaced |> Enum.sort() |> Enum.join(",")}
   end
 end
