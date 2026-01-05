@@ -53,7 +53,39 @@ defmodule Main do
     {:ok, result}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp list_aba([], result) do
+    result
+  end
+
+  defp list_aba([a | [b, a | _] = tail], result) when a != b do
+    list_aba(tail, [{a, b} | result])
+  end
+
+  defp list_aba([_ | tail], result) do
+    list_aba(tail, result)
+  end
+
+  defp is_input_valid2?(entry) do
+    base_matches =
+      entry.base
+      |> Enum.map(fn elem -> list_aba(String.to_charlist(elem), []) end)
+      |> List.flatten()
+      |> MapSet.new()
+
+    bracket_matches =
+      entry.brackets
+      |> Enum.map(fn elem -> list_aba(String.to_charlist(elem), []) end)
+      |> List.flatten()
+      |> Enum.map(fn {a, b} -> {b, a} end)
+      |> MapSet.new()
+
+    intersection = MapSet.intersection(base_matches, bracket_matches)
+    MapSet.size(intersection) > 0
+  end
+
+  def part2(input_data) do
+    {:ok, data} = parse_input(input_data)
+    result = data |> Enum.filter(fn entry -> is_input_valid2?(entry) end) |> Enum.count()
+    {:ok, result}
   end
 end
