@@ -46,7 +46,33 @@ defmodule Main do
     {:ok, result |> List.last()}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp calculate_length2([], length) do
+    length
+  end
+
+  defp calculate_length2([?( | tail], length) do
+    {:ok, sub_tail, char_count, multi_count} = parse_unpacker(tail, 0, 0, false)
+
+    sub_space = sub_tail |> Enum.slice(0, char_count)
+    real_length = calculate_length2(sub_space, 0)
+
+    new_tail = sub_tail |> Enum.slice(char_count, length(sub_tail) - char_count)
+    calculate_length2(new_tail, length + real_length * multi_count)
+  end
+
+  defp calculate_length2([_ | tail], length) do
+    calculate_length2(tail, length + 1)
+  end
+
+  defp calculate_length2(line) do
+    calculate_length2(String.to_charlist(line), 0)
+  end
+
+  def part2(input_data) do
+    lines =
+      input_data |> String.split("\n") |> Enum.filter(fn line -> String.length(line) > 0 end)
+
+    result = lines |> Enum.map(fn line -> calculate_length2(line) end)
+    {:ok, result |> List.last()}
   end
 end
