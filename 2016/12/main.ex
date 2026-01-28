@@ -81,18 +81,19 @@ defmodule Main do
     end
   end
 
-  defp apply_instructions(instructions) do
-    registers = %{"a" => 0, "b" => 0, "c" => 0, "d" => 0}
+  defp apply_instructions(instructions, registers) do
     apply_instruction(registers, instructions, 0)
   end
 
   def part1(input_data) do
     instructions = process_data(input_data)
-    {:ok, registers} = apply_instructions(instructions)
+    {:ok, registers} = apply_instructions(instructions, %{"a" => 0, "b" => 0, "c" => 0, "d" => 0})
     {:ok, Map.get(registers, "a")}
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  def part2(input_data) do
+    instructions = process_data(input_data)
+    {:ok, registers} = apply_instructions(instructions, %{"a" => 0, "b" => 0, "c" => 1, "d" => 0})
+    {:ok, Map.get(registers, "a")}
   end
 end
