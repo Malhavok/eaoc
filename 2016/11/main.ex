@@ -75,26 +75,55 @@ defmodule Main do
     unpaired_microchips = MapSet.difference(microchips, generators)
 
     # If there are unpaired microchips, the floor isn't safe.
-    MapSet.size(unpaired_microchips) == 0
+    (MapSet.size(unpaired_microchips) == 0 and MapSet.size(generators) > 0) or
+      MapSet.size(generators) == 0
+  end
+
+  defp single_items_safely_taken(list_of_elements) do
+    list_of_elements
+    |> Enum.with_index()
+    |> Enum.map(fn {entry, index} -> {[entry], List.delete_at(list_of_elements, index)} end)
+    |> Enum.filter(fn {_, sublist} -> is_floor_safe?(sublist) end)
   end
 
   defp what_can_be_safely_taken(all_elements) do
-    # First, lets list all the single items that are "safe to move".
+    first_level = single_items_safely_taken(all_elements)
+
+    second_level =
+      first_level
+      |> Enum.map(fn {entries, sublist} ->
+        sublevel = single_items_safely_taken(sublist)
+        sublevel |> Enum.map(fn {elem, remaining} -> {entries ++ elem, remaining} end)
+      end)
+      |> List.flatten()
+
+    {:ok,
+     (first_level ++ second_level)
+     |> Enum.map(fn {elems, remaining} -> {elems |> Enum.sort(), remaining |> Enum.sort()} end)
+     |> Enum.uniq()}
   end
 
-  defp is_part1_finished?(floor_states, all_elements) do
-    %Main.Input{floor_idx: 4} =
-      last_floor = floor_states |> Enum.find(nil, fn elem -> elem.floor_idx == 4 end)
+  defp is_part1_finished?(floor_states) do
+    remaining_states =
+      floor_states |> Enum.filter(fn floor_state -> length(floor_state.elements) != 0 end)
 
-    sorted_elements = last_floor.elements |> Enum.sort()
-    expected_elements = all_elements |> Enum.sort()
+    length(remaining_states) == 1 and (remaining_states |> Enum.at(0)).floor_idx == 4
+  end
 
-    sorted_elements == expected_elements
+  defp next_floors(1) do
+    {:ok, [2]}
+  end
+
+  defp next_floors(4) do
+    {:ok, [3]}
+  end
+
+  defp next_floors(floor) do
+    {:ok, [floor - 1, floor + 1]}
   end
 
   def part1(input_data) do
     {:ok, state} = parse_input(input_data)
-    state |> inspect() |> IO.puts()
     {:ok, :test}
   end
 
