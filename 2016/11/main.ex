@@ -122,8 +122,30 @@ defmodule Main do
     {:ok, [floor - 1, floor + 1]}
   end
 
+  defp list_options(floor, floor_elements) do
+    {:ok, new_floors} = next_floors(floor)
+    {:ok, elements_remaining} = what_can_be_safely_taken(floor_elements)
+
+    new_floors
+    |> Enum.map(fn floor_idx ->
+      elements_remaining
+      |> Enum.map(fn {to_move, remaining} ->
+        {floor_idx, to_move, remaining}
+      end)
+    end)
+    |> List.flatten()
+  end
+
+  defp iterate_states(floor, state, steps_count) do
+    if is_part1_finished?(state) do
+      {:ok, steps_count}
+    else
+    end
+  end
+
   def part1(input_data) do
     {:ok, state} = parse_input(input_data)
+    {:ok, steps_count} = iterate_states(1, state, 0)
     {:ok, :test}
   end
 
