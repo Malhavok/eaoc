@@ -207,7 +207,7 @@ defmodule Main do
   defp iterate_states(states, steps_count) do
     {:ok, new_states, is_done} = update_states(states, [])
 
-    if is_done or steps_count > 15 do
+    if is_done do
       {:ok, steps_count}
     else
       iterate_states(new_states, steps_count + 1)
