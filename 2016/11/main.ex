@@ -56,7 +56,13 @@ defmodule Main do
     lines =
       input_data |> String.split("\n") |> Enum.filter(fn line -> String.length(line) > 0 end)
 
-    {:ok, lines |> Enum.map(fn line -> Main.Input.parse_line(line) end)}
+    {:ok,
+     lines
+     |> Enum.map(fn line -> Main.Input.parse_line(line) end)
+     |> Enum.map(fn %Main.Input{floor_idx: floor_idx, elements: elements} ->
+       {floor_idx, elements}
+     end)
+     |> Map.new()}
   end
 
   defp is_floor_safe?(all_elements) do
@@ -104,10 +110,7 @@ defmodule Main do
   end
 
   defp is_part1_finished?(floor_states) do
-    remaining_states =
-      floor_states |> Enum.filter(fn floor_state -> length(floor_state.elements) != 0 end)
-
-    length(remaining_states) == 1 and (remaining_states |> Enum.at(0)).floor_idx == 4
+    [1, 2, 3] |> Enum.all?(fn floor_idx -> length(Map.get(floor_states, floor_idx)) == 0 end)
   end
 
   defp next_floors(1) do
@@ -136,17 +139,57 @@ defmodule Main do
     |> List.flatten()
   end
 
-  defp iterate_states(floor, state, steps_count) do
+  defp update_states([], out_states) do
+    {:ok, out_states, false}
+  end
+
+  defp update_states([{floor, state} | tail], out_states) do
+    # {:runner, length(tail) + 1, length(out_states)} |> inspect() |> IO.puts()
+
     if is_part1_finished?(state) do
-      {:ok, steps_count}
+      {:ok, [], true}
     else
+      elements_options = Map.get(state, floor)
+      # List of {new floor, elements moving to new floor, elements remaining on the current floor}
+      options = list_options(floor, elements_options)
+
+      # We need to convert it to {floor, state}, but we also need to filter out all "impossible" states.
+      # So, we can build new state, where old floor has only remaining elements and new floor have old + new elements.
+      # And we need to verify whether is_floor_safe? for the new floor is "valid".
+      new_states =
+        options
+        |> Enum.map(fn {new_floor, moved_to_new_floor, left_on_this_floor} ->
+          new_state =
+            state
+            |> Map.put(floor, left_on_this_floor)
+            |> Map.put(new_floor, Map.get(state, new_floor) ++ moved_to_new_floor)
+
+          {new_floor, new_state}
+        end)
+        |> Enum.filter(fn {new_floor, new_state} ->
+          is_floor_safe?(Map.get(new_state, new_floor))
+        end)
+
+      update_states(tail, out_states ++ new_states)
+    end
+  end
+
+  defp iterate_states(states, steps_count) do
+    {:start, length(states), steps_count} |> inspect() |> IO.puts()
+
+    {:ok, new_states, is_done} = update_states(states, [])
+    new_steps_count = steps_count + 1
+
+    if is_done do
+      {:ok, new_steps_count}
+    else
+      iterate_states(new_states, new_steps_count)
     end
   end
 
   def part1(input_data) do
     {:ok, state} = parse_input(input_data)
-    {:ok, steps_count} = iterate_states(1, state, 0)
-    {:ok, :test}
+    {:ok, _steps_count} = iterate_states([{1, state}], 0)
   end
 
   def part2(_input_data) do
