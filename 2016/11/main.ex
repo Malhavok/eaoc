@@ -52,6 +52,8 @@ defmodule Main.Input do
 end
 
 defmodule Main do
+  @cache_name :cache_table
+
   defp parse_input(input_data) do
     lines =
       input_data |> String.split("\n") |> Enum.filter(fn line -> String.length(line) > 0 end)
@@ -139,13 +141,38 @@ defmodule Main do
     |> List.flatten()
   end
 
+  defp hash_floor_state(floor, state) do
+    floors_group =
+      state
+      |> Map.to_list()
+      |> Enum.map(fn {index, list_of_elements} ->
+        list_of_elements
+        |> Enum.map(fn {type, value} ->
+          {value, type, index}
+        end)
+      end)
+      |> List.flatten()
+      |> Enum.reduce(%{}, fn {key, type, index}, acc ->
+        current = Map.get(acc, key, %{:microchip => -1, :generator => -1})
+        updated = Map.put(current, type, index)
+        Map.put(acc, key, updated)
+      end)
+      |> Map.to_list()
+      |> Enum.map(fn {_, mapping} ->
+        microchip_floor = Map.get(mapping, :microchip)
+        generator_floor = Map.get(mapping, :generator)
+        {microchip_floor, generator_floor}
+      end)
+      |> Enum.sort()
+
+    {floor, floors_group}
+  end
+
   defp update_states([], out_states) do
     {:ok, out_states, false}
   end
 
   defp update_states([{floor, state} | tail], out_states) do
-    # {:runner, length(tail) + 1, length(out_states)} |> inspect() |> IO.puts()
-
     if is_part1_finished?(state) do
       {:ok, [], true}
     else
@@ -169,26 +196,29 @@ defmodule Main do
         |> Enum.filter(fn {new_floor, new_state} ->
           is_floor_safe?(Map.get(new_state, new_floor))
         end)
+        |> Enum.filter(fn {new_floor, new_state} ->
+          :ets.insert_new(@cache_name, {hash_floor_state(new_floor, new_state), true})
+        end)
 
       update_states(tail, out_states ++ new_states)
     end
   end
 
   defp iterate_states(states, steps_count) do
-    {:start, length(states), steps_count} |> inspect() |> IO.puts()
-
     {:ok, new_states, is_done} = update_states(states, [])
-    new_steps_count = steps_count + 1
 
-    if is_done do
-      {:ok, new_steps_count}
+    if is_done or steps_count > 15 do
+      {:ok, steps_count}
     else
-      iterate_states(new_states, new_steps_count)
+      iterate_states(new_states, steps_count + 1)
     end
   end
 
   def part1(input_data) do
     {:ok, state} = parse_input(input_data)
+    :ets.new(@cache_name, [:named_table, :set, :private])
+    :ets.insert(@cache_name, {hash_floor_state(1, state), true})
+
     {:ok, _steps_count} = iterate_states([{1, state}], 0)
   end
 
