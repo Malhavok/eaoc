@@ -222,7 +222,11 @@ defmodule Main do
     {:ok, _steps_count} = iterate_states([{1, state}], 0)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  def part2(input_data) do
+    {:ok, state} = parse_input(input_data)
+    :ets.new(@cache_name, [:named_table, :set, :private])
+    :ets.insert(@cache_name, {hash_floor_state(1, state), true})
+
+    {:ok, _steps_count} = iterate_states([{1, state}], 0)
   end
 end
