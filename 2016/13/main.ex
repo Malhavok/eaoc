@@ -46,7 +46,6 @@ defmodule Main do
   def part1(input_data) do
     {:ok, magic_number, end_position} = parse_input(input_data)
     :ets.new(@grid_cache, [:named_table, :set])
-    is_point_wall?(Point2D.new(2, 1), magic_number) |> inspect() |> IO.puts()
     {:ok, :test}
   end
 
