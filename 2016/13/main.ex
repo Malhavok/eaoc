@@ -97,7 +97,31 @@ defmodule Main do
     {:ok, _distance} = search_for_target(Point2D.new(1, 1), end_position, magic_number)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp search_for_depth(start_point, max_depth, number) do
+    queue = PriorityQueue.new() |> PriorityQueue.put({0, start_point})
+    run_depth(max_depth, number, queue, MapSet.new())
+  end
+
+  defp run_depth(max_depth, number, priority_queue, visited) do
+    {{distance, current_point}, new_queue} = PriorityQueue.pop(priority_queue)
+
+    if {distance, current_point} == {nil, nil} do
+      {:ok, MapSet.size(visited)}
+    else
+      if distance <= max_depth and !MapSet.member?(visited, current_point) do
+        {bumped_queue, new_visited} =
+          try_move_from_point(current_point, distance, number, new_queue, visited)
+
+        run_depth(max_depth, number, bumped_queue, new_visited)
+      else
+        run_depth(max_depth, number, new_queue, visited)
+      end
+    end
+  end
+
+  def part2(input_data) do
+    {:ok, magic_number, _end_position} = parse_input(input_data)
+    :ets.new(@grid_cache, [:named_table, :set])
+    search_for_depth(Point2D.new(1, 1), 50, magic_number)
   end
 end
