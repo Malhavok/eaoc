@@ -8,7 +8,8 @@ defmodule Grid do
     build_line(lines, 0, %{})
   end
 
-  @spec get_neighbours(mapSpec(), point(), [point(), ...]) :: {:ok, [{point(), char()}, ...]}
+  @spec get_neighbours(mapSpec(), point(), [{integer(), integer()}, ...]) ::
+          {:ok, [{point(), char()}, ...]}
   def get_neighbours(map, point, neighbours \\ [{0, 1}, {1, 0}, {-1, 0}, {0, -1}]) do
     get_neighbour(map, point, neighbours, [])
   end
