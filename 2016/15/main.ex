@@ -108,7 +108,9 @@ defmodule Main do
     run_algo(input)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  def part2(input_data) do
+    input = parse_input(input_data)
+    full_input = input ++ [{length(input) + 1, 11, 0}]
+    run_algo(full_input)
   end
 end
