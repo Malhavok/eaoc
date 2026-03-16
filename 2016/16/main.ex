@@ -51,7 +51,10 @@ defmodule Main do
     {:ok, _hashed_data} = calculate_hash(data, count)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  def part2(input_data) do
+    {:ok, _count, input} = parse_input(input_data)
+    count = 35_651_584
+    {:ok, data} = build_data(input, length(input), count)
+    {:ok, _hashed_data} = calculate_hash(data, count)
   end
 end
