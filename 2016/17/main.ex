@@ -87,7 +87,45 @@ defmodule Main do
     {:ok, _path} = run_part1(@start, @goal, password, &in_bounds_part1?/1)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp safe_pop(priority_queue) do
+    {item, new_queue} = PriorityQueue.pop(priority_queue)
+
+    if item == nil do
+      {{nil, nil}, new_queue}
+    else
+      {item, new_queue}
+    end
+  end
+
+  defp iterate_part2(priority_queue, end_pos, password, bounds_fun, max_distance) do
+    {{distance, main_data}, new_queue} = safe_pop(priority_queue)
+
+    if distance == nil do
+      {:ok, max_distance}
+    else
+      %Main.Data{position: position, path: path} = main_data
+
+      if position == end_pos do
+        # Since we're going breadth-first, each new distance we find will be larger than the previous one.
+        iterate_part2(new_queue, end_pos, password, bounds_fun, distance)
+      else
+        {:ok, updated_queue} =
+          move_part1(new_queue, distance, position, password, path, bounds_fun)
+
+        iterate_part2(updated_queue, end_pos, password, bounds_fun, max_distance)
+      end
+    end
+  end
+
+  defp run_part2(start_pos, end_pos, password, bounds_fun) do
+    priority_queue =
+      PriorityQueue.new() |> PriorityQueue.put(0, %Main.Data{position: start_pos, path: ""})
+
+    iterate_part2(priority_queue, end_pos, password, bounds_fun, 0)
+  end
+
+  def part2(input_data) do
+    {:ok, password} = parse_input(input_data)
+    {:ok, _max_len} = run_part2(@start, @goal, password, &in_bounds_part1?/1)
   end
 end
