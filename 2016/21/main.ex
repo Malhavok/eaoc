@@ -29,7 +29,7 @@ defmodule Main do
 
   defp parse_command("rotate based on position of letter " <> rest) do
     # rotate based on position of letter X
-    {:rotate_by, rest |> String.to_charlist() |> Enum.at(0)}
+    {:rotate_by, 1, rest |> String.to_charlist() |> Enum.at(0)}
   end
 
   defp parse_command("reverse positions " <> rest) do
@@ -81,7 +81,7 @@ defmodule Main do
     {:ok, new_password_start |> Enum.take(len)}
   end
 
-  defp apply_command(password, {:rotate_by, letter}) do
+  defp apply_command(password, {:rotate_by, direction, letter}) do
     index_of_letter = password |> Enum.find_index(fn elem -> elem == letter end)
 
     rotation =
@@ -92,7 +92,24 @@ defmodule Main do
           0
         end
 
-    apply_command(password, {:rotate, 1, rotation})
+    apply_command(password, {:rotate, direction, rotation})
+  end
+
+  defp apply_command(password, {:rotate_reversed, direction, letter}) do
+    # To perform this operation we're going to literally "search" for a solution.
+    command = {:rotate_by, direction, letter}
+    # We're going to apply reverse rotations of 1 to length and
+    # the first one that reversed matches the original is our result.
+    found_index =
+      1..length(password)
+      |> Enum.find(nil, fn index ->
+        {:ok, broken} = apply_command(password, {:rotate, direction, index})
+        {:ok, reversed} = apply_command(broken, command)
+        password == reversed
+      end)
+
+    {:ok, result} = apply_command(password, {:rotate, direction, found_index})
+    {:ok, result}
   end
 
   defp apply_command(password, {:reverse, x_value, y_value}) do
@@ -123,7 +140,32 @@ defmodule Main do
     {:ok, _password} = scramble(password |> String.to_charlist(), commands)
   end
 
-  def part2(_input_data) do
-    {:error, :notimplemented}
+  defp reverse_commands([], reversed) do
+    {:ok, reversed}
+  end
+
+  defp reverse_commands([{:rotate, direction, value} | tail], reversed) do
+    new_command = {:rotate, -1 * direction, value}
+    reverse_commands(tail, [new_command | reversed])
+  end
+
+  defp reverse_commands([{:rotate_by, direction, value} | tail], reversed) do
+    new_command = {:rotate_reversed, direction, value}
+    reverse_commands(tail, [new_command | reversed])
+  end
+
+  defp reverse_commands([{:move, x_value, y_value} | tail], reversed) do
+    new_command = {:move, y_value, x_value}
+    reverse_commands(tail, [new_command | reversed])
+  end
+
+  defp reverse_commands([command | tail], reversed) do
+    reverse_commands(tail, [command | reversed])
+  end
+
+  def part2(input_data) do
+    {:ok, password, commands} = parse_input(input_data)
+    {:ok, reversed} = reverse_commands(commands, [])
+    {:ok, _un_scrambled} = scramble(password |> String.to_charlist(), reversed)
   end
 end

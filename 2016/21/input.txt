@@ -1,4 +1,4 @@
-abcdefgh
+fbgdceah
 
 rotate right 1 step
 swap position 2 with position 4
