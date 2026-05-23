@@ -40,8 +40,33 @@ defmodule Main do
   end
 
   def part1(input_data) do
-    ({:ok, _data} = parse_input(input_data)) |> inspect() |> IO.puts()
-    {:ok, :test}
+    {:ok, data} = parse_input(input_data)
+
+    with_available =
+      data
+      |> Enum.map(fn node ->
+        {"#{node.x}-#{node.y}", node.used, Main.Node.get_available(node)}
+      end)
+
+    sort_by_used =
+      with_available |> Enum.sort(fn {_, value1, _}, {_, value2, _} -> value1 < value2 end)
+
+    sort_by_available =
+      with_available |> Enum.sort(fn {_, _, value1}, {_, _, value2} -> value1 < value2 end)
+
+    group =
+      sort_by_used
+      |> Enum.map(fn {key1, used, _} ->
+        sort_by_available
+        |> Enum.filter(fn {key2, _, available} ->
+          key1 != key2 and used > 0 and available >= used
+        end)
+        |> Enum.map(fn {key2, _, _} -> "#{key1}-#{key2}" end)
+      end)
+      |> List.flatten()
+      |> Enum.uniq()
+
+    {:ok, group |> length()}
   end
 
   def part2(_input_data) do
